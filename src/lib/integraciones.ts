@@ -11,9 +11,9 @@
  * Módulo puro: lo usan el servidor y el panel, y lo prueba el runner de Node.
  */
 
-export type Integracion = "openai" | "ycloud" | "zernio";
+export type Integracion = "openai" | "ycloud" | "zernio" | "shopify";
 
-export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio"];
+export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify"];
 
 export type Campo = {
   clave: string;
@@ -182,6 +182,55 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
       },
     ],
     webhook: { ruta: "/api/webhooks/zernio", donde: "Zernio" },
+  },
+  shopify: {
+    integracion: "shopify",
+    nombre: "Shopify (tienda y landing)",
+    descripcion:
+      "Cada pedido nuevo de Shopify entra solo a Pedidos: los de la tienda como SHOPIFY TIENDA y los del formulario de EasySell como SHOPIFY LANDING.",
+    pasos: [
+      { texto: "Copia esta URL con el botón.", con: "url" },
+      {
+        texto: "En Shopify ve a Configuración → Notificaciones → Webhooks y toca Crear webhook: evento Creación de pedido (Order creation), formato JSON, pega la URL y elige la versión más nueva de la API. Guarda.",
+      },
+      {
+        texto: "Abajo de la lista de webhooks Shopify dice \"Tus webhooks se firmarán con…\" y un código largo: cópialo entero acá.",
+        con: "webhook_secret",
+      },
+      { texto: "El alias de la asesora que recibe los pedidos de Shopify.", con: "asesor" },
+      { texto: "Guarda.", con: "guardar" },
+      {
+        texto: "Para probar, en Shopify toca Enviar notificación de prueba en el webhook, o haz un pedido de prueba: tiene que aparecer en Pedidos.",
+      },
+    ],
+    campos: [
+      {
+        clave: "webhook_secret",
+        etiqueta: "Código de firma de los webhooks",
+        secreto: true,
+        requerido: true,
+        env: "SHOPIFY_WEBHOOK_SECRET",
+      },
+      {
+        clave: "asesor",
+        etiqueta: "Asesora que recibe los pedidos",
+        secreto: false,
+        requerido: false,
+        env: "SHOPIFY_ASESOR",
+        porDefecto: "YAHAIRA",
+        placeholder: "YAHAIRA",
+      },
+      {
+        clave: "marca_landing",
+        etiqueta: "Palabra que marca un pedido de la landing",
+        secreto: false,
+        requerido: false,
+        env: "SHOPIFY_MARCA_LANDING",
+        porDefecto: "easysell",
+        ayuda: "Se busca en las etiquetas y en el origen del pedido. EasySell marca los suyos con su nombre.",
+      },
+    ],
+    webhook: { ruta: "/api/webhooks/shopify", donde: "Shopify" },
   },
 };
 
