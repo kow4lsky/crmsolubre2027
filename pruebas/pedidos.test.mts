@@ -100,3 +100,35 @@ test("formatos para pegar en planillas", () => {
 test("la búsqueda saca los comodines que romperían la consulta", () => {
   assert.equal(terminoDeBusqueda("  WED7649, %Juan_ "), "wed7649 juan");
 });
+
+test("los renglones de productos se juntan y arman el resumen", async () => {
+  const { juntarLineas, resumenDeProductos, lineasDe, cantidadDeLinea } = await import("../src/lib/pedidos.ts");
+  const items = juntarLineas([
+    { producto: "SOLUBRE", cantidad: "2", otra: "" },
+    { producto: "CEPILLO VERDE", cantidad: "otro", otra: "12" },
+    { producto: "SOLUBRE", cantidad: "1", otra: "" },
+    { producto: "", cantidad: "3", otra: "" },
+    { producto: "PAÑO", cantidad: "otro", otra: "" },
+  ]);
+  assert.deepEqual(items, [
+    { producto: "SOLUBRE", cantidad: 3 },
+    { producto: "CEPILLO VERDE", cantidad: 12 },
+  ]);
+  assert.equal(resumenDeProductos(items), "3xSOLUBRE, 12xCEPILLO VERDE");
+  assert.deepEqual(lineasDe([{ producto: "PAÑO", cantidad: 4 }, { producto: "CAJAS", cantidad: 20 }]), [
+    { producto: "PAÑO", cantidad: "4", otra: "" },
+    { producto: "CAJAS", cantidad: "otro", otra: "20" },
+  ]);
+  assert.equal(cantidadDeLinea({ producto: "X", cantidad: "otro", otra: "1.5" }), null);
+});
+
+test("un pedido sale del inventario: Lima al entregar, Provincia desde EN TRÁNSITO", async () => {
+  const { saleDeInventario } = await import("../src/lib/pedidos.ts");
+  assert.equal(saleDeInventario("Lima", "EN TRÁNSITO"), false);
+  assert.equal(saleDeInventario("Lima", "ENTREGADO"), true);
+  assert.equal(saleDeInventario(null, "CONFIRMADO"), false);
+  assert.equal(saleDeInventario("Provincia", "CONFIRMADO"), false);
+  assert.equal(saleDeInventario("Provincia", "EN TRÁNSITO"), true);
+  assert.equal(saleDeInventario("Provincia", "ENTREGADO"), true);
+  assert.equal(saleDeInventario("Provincia", "RECHAZADO"), false);
+});
