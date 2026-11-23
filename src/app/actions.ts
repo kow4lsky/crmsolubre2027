@@ -133,6 +133,8 @@ type WorkspaceScope =
       role: MemberRole;
       permissions: PermissionMap;
       isAdmin: boolean;
+      /** Rol en la venta: las asesoras no usan el asistente ni cambian su contraseña. */
+      rolVenta: RolVenta;
       /** Zona del workspace: con ella se decide dónde empieza y termina un día. */
       timezone: string;
     };
@@ -168,6 +170,7 @@ async function requireWorkspace(): Promise<WorkspaceScope> {
     role: context.role,
     permissions: context.permissions,
     isAdmin: context.isAdmin,
+    rolVenta: context.rolVenta,
     timezone: context.timezone,
   };
 }
@@ -185,6 +188,11 @@ async function requirePermission(permission: Permission): Promise<WorkspaceScope
     return { ok: false, error: "No tienes permiso para hacer eso. Pídeselo a un administrador." };
   }
   return scope;
+}
+
+/** Asesor o asesor temporal: no usan el asistente ni cambian su propia contraseña. */
+function esAsesora(rol: RolVenta): boolean {
+  return rol === "asesor" || rol === "asesor_temp";
 }
 
 /** Igual que la anterior, pero sólo para administradores. */
@@ -3065,6 +3073,9 @@ async function emailsById(): Promise<Map<string, string>> {
 export async function changeOwnPassword(input: { password: string }): Promise<ActionResult> {
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
+  if (esAsesora(scope.rolVenta)) {
+    return { ok: false, error: "Tu contraseña la cambia el administrador. Pídesela a él." };
+  }
 
   const floja = errorDeContrasena(input.password ?? "");
   if (floja) return { ok: false, error: floja };
@@ -3416,6 +3427,7 @@ export async function preguntarAlAsistente(input: {
 }): Promise<AsistenteResult> {
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
+  if (esAsesora(scope.rolVenta)) return { ok: false, error: "El asistente no está disponible para tu rol." };
 
   const mensajes = (input.mensajes ?? [])
     .filter((turno) => typeof turno?.content === "string" && turno.content.trim())
@@ -4175,4 +4187,25 @@ export async function crearUsuarioDelEquipo(input: {
 
   revalidatePath("/");
   return { ok: true, warning: `Listo: ${email} ya puede entrar al CRM.` };
+}
+
+/** El administrador le pone una contraseña nueva a alguien del equipo. */
+export async function cambiarContrasenaDeMiembro(input: { userId: string; password: string }): Promise<ActionResult> {
+  const scope = await requireAdmin("cambiar contraseñas");
+  if (!scope.ok) return { ok: false, error: scope.error };
+  const floja = errorDeContrasena(input.password ?? "");
+  if (floja) return { ok: false, error: floja };
+
+  // Sólo de alguien de este equipo: la service role podría tocar cualquier cuenta.
+  const { data: miembro } = await scope.supabase
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", scope.workspaceId)
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  if (!miembro) return { ok: false, error: "Esa persona no es parte del equipo." };
+
+  const { error } = await getSupabaseAdmin().auth.admin.updateUserById(input.userId, { password: input.password });
+  if (error) return { ok: false, error: `No se pudo cambiar: ${error.message}` };
+  return { ok: true, warning: "Contraseña cambiada. Pásasela por un medio seguro." };
 }

@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import {
+  cambiarContrasenaDeMiembro,
   cargarEquipoDeVenta,
   crearUsuarioDelEquipo,
   guardarMiembroDeVenta,
@@ -205,7 +206,7 @@ function NuevoUsuario({ onCancelar, onCreado }: { onCancelar: () => void; onCrea
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{error}</p>}
 
       <p className="text-xs text-neutral-500">
-        Pásale el correo y la contraseña por un medio seguro. Puede cambiar su contraseña desde su cuenta, arriba a la derecha.
+        Pásale el correo y la contraseña por un medio seguro. Si la olvida, se la cambias desde esta misma lista.
       </p>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancelar} className={BOTON_SECUNDARIO}>
@@ -289,6 +290,8 @@ function FilaMiembro({ miembro, onNotice }: { miembro: MiembroDeVenta; onNotice:
       </div>
       <p className="mt-2 text-xs text-neutral-500">{QUE_PUEDE[rol]}</p>
 
+      <CambiarContrasena userId={miembro.userId} email={miembro.email} onNotice={onNotice} />
+
       {rol === "admin" ? (
         <p className="mt-3 text-xs text-neutral-500">Ve todas las secciones.</p>
       ) : (
@@ -308,5 +311,62 @@ function FilaMiembro({ miembro, onNotice }: { miembro: MiembroDeVenta; onNotice:
         </div>
       )}
     </li>
+  );
+}
+
+function CambiarContrasena({ userId, email, onNotice }: { userId: string; email: string; onNotice: (m: string) => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [clave, setClave] = useState("");
+  const [ver, setVer] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+
+  const guardar = async () => {
+    setGuardando(true);
+    const res = await cambiarContrasenaDeMiembro({ userId, password: clave });
+    setGuardando(false);
+    if (!res.ok) return onNotice(res.error);
+    setAbierto(false);
+    setClave("");
+    onNotice(`${email}: ${res.warning ?? "contraseña cambiada."}`);
+  };
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className="mt-3 mr-4 cursor-pointer text-sm font-semibold text-amber-700 hover:underline dark:text-amber-300"
+      >
+        Cambiar contraseña
+      </button>
+    );
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="relative block min-w-[220px] flex-1">
+        <input
+          type={ver ? "text" : "password"}
+          value={clave}
+          onChange={(e) => setClave(e.target.value)}
+          autoComplete="new-password"
+          placeholder={`Contraseña nueva (mínimo ${MIN_PASSWORD_CHARS})`}
+          className={`${INPUT_CLASS} pr-11`}
+        />
+        <button
+          type="button"
+          aria-label={ver ? "Ocultar contraseña" : "Mostrar contraseña"}
+          onClick={() => setVer(!ver)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10"
+        >
+          {ver ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </span>
+      <button type="button" disabled={guardando || !clave} onClick={() => void guardar()} className={PRIMARY_BUTTON_CLASS}>
+        {guardando ? "Guardando…" : "Guardar contraseña"}
+      </button>
+      <button type="button" onClick={() => setAbierto(false)} className={BOTON_SECUNDARIO}>
+        Cancelar
+      </button>
+    </div>
   );
 }
