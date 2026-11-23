@@ -10,8 +10,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { dayKeyInZone } from "./fechas.ts";
 
-export const CANAL_SHOPIFY_TIENDA = "SHOPIFY TIENDA";
-export const CANAL_SHOPIFY_LANDING = "SHOPIFY LANDING";
+/** Tienda y landing entran con el mismo canal; el origen queda en extra. */
+export const CANAL_SHOPIFY = "SHOPIFY";
 
 /** Shopify firma el cuerpo con HMAC-SHA256 y lo manda en base64. */
 export function verificarFirmaShopify(cuerpo: string, firma: string | null, secreto: string): boolean {
@@ -161,12 +161,13 @@ export function pedidoDesdeShopify(pedido: PedidoShopify, opciones: OpcionesShop
       destino,
       estado: pagado ? "CONFIRMADO" : "VOLVER A LLAMAR",
       pago_completo: pagado ? "SÍ" : null,
-      canal: landing ? CANAL_SHOPIFY_LANDING : CANAL_SHOPIFY_TIENDA,
+      canal: CANAL_SHOPIFY,
       asesor: opciones.asesor || null,
       asignado_a: opciones.asesor || null,
       nota: [`Shopify ${texto(pedido.name)}`.trim(), texto(pedido.note)].filter(Boolean).join(" · "),
       extra: {
         "SHOPIFY PEDIDO": texto(pedido.name),
+        "SHOPIFY ORIGEN": landing ? "LANDING" : "TIENDA",
         "SHOPIFY PAGO": texto(pedido.financial_status),
         "SHOPIFY CIUDAD": ciudad,
         "SHOPIFY REGIÓN": region,

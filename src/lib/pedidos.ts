@@ -89,7 +89,7 @@ export function estadosIniciales(rol: RolVenta): Estado[] {
 /** Las listas desplegables de la planilla. Se pueden ampliar sin tocar la base. */
 export const OPCIONES = {
   destino: ["Lima", "Provincia"],
-  canal: ["WASAP IA", "WEB", "SHOPIFY TIENDA", "SHOPIFY LANDING", "SHOPIFY", "WASAP EMP", "REDES (Inst,Mess)"],
+  canal: ["WASAP IA", "WEB", "SHOPIFY", "WASAP EMP", "REDES (Inst,Mess)"],
   envio: ["Express", "Indriver", "Prog.Normal", "Prov.Agencia"],
   courier: ["Olva", "Shalom", "Marvisur", "Swayp", "Solubre"],
   inventario: ["SOLUBRE", "SWAYP"],
@@ -103,9 +103,12 @@ export const OPCIONES = {
 /** Cuántos pedidos trae cada página de la tabla. */
 export const PEDIDOS_POR_PAGINA = 100;
 
-/** Las columnas que pide la tabla y el formulario. */
-export const COLUMNAS_PEDIDO =
+/** Las columnas que pide la tabla y el formulario, sin las de migraciones recientes. */
+export const COLUMNAS_PEDIDO_BASE =
   "id, codigo, fecha_creacion, fecha_registro, monto, pedido, cliente, direccion, dni, provincia, distrito, celular, destino, estado, asesor, canal, envio, courier, costo_envio, inventario, tracking, clave, nota, adelanto, pago_completo, prox_llamada, tipo_cliente, tipo_venta, cerrado_por, comision, creado_por, asignado_a, encargado, fecha_estado, fecha_confirmado, fecha_salida, fecha_entregado, ultima_gestion, estado_etiqueta, fecha_etiqueta, estado_shalom, es_prueba, extra";
+
+/** Con la hora de la próxima llamada (migración 202611290001). */
+export const COLUMNAS_PEDIDO = `${COLUMNAS_PEDIDO_BASE}, prox_llamada_at`;
 
 /* ------------------------------------------------------------------ tipos */
 
@@ -136,6 +139,8 @@ export type Pedido = {
   adelanto: number | null;
   pago_completo: string | null;
   prox_llamada: string | null;
+  /** Fecha y hora de la próxima llamada (el recordatorio). */
+  prox_llamada_at?: string | null;
   tipo_cliente: string | null;
   tipo_venta: string | null;
   cerrado_por: string | null;
@@ -416,4 +421,30 @@ export function faltaParaEstado(datos: {
   ].filter(Boolean) as string[];
   if (!faltan.length) return null;
   return `Para dejarlo ${datos.estado} completa: ${faltan.join(", ")}.`;
+}
+
+/* ------------------------------------------------------- hora de Lima */
+
+/** Perú no cambia la hora en el año: siempre UTC-5. */
+const LIMA_MS = 5 * 60 * 60 * 1000;
+
+/** Lo que devuelve un campo fecha y hora ("2026-11-24T15:30"), leído en hora de Lima. */
+export function momentoDeLima(local: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(local.trim());
+  return m ? `${m[1]}T${m[2]}:${m[3]}:00-05:00` : null;
+}
+
+/** Un momento guardado → el valor del campo fecha y hora, en hora de Lima. */
+export function aLocalDeLima(momento: string | null | undefined): string {
+  if (!momento) return "";
+  const t = new Date(momento).getTime();
+  if (Number.isNaN(t)) return "";
+  return new Date(t - LIMA_MS).toISOString().slice(0, 16);
+}
+
+/** "24/11/2026 15:30", en hora de Lima. */
+export function fechaYHoraDeLima(momento: string | null | undefined): string {
+  const local = aLocalDeLima(momento);
+  if (!local) return "";
+  return `${fechaCorta(local.slice(0, 10))} ${local.slice(11, 16)}`;
 }

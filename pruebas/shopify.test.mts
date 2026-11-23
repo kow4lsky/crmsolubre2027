@@ -10,8 +10,7 @@ import { createHmac } from "node:crypto";
 import { test } from "node:test";
 
 import {
-  CANAL_SHOPIFY_LANDING,
-  CANAL_SHOPIFY_TIENDA,
+  CANAL_SHOPIFY,
   pedidoDesdeShopify,
   productoDelCatalogo,
   verificarFirmaShopify,
@@ -56,7 +55,8 @@ test("sólo acepta lo que firmó Shopify", () => {
 test("un pedido contra entrega de la tienda entra para llamar, asignado a la asesora", () => {
   const { fila, items } = pedidoDesdeShopify(base, OPCIONES);
   assert.equal(fila.estado, "VOLVER A LLAMAR");
-  assert.equal(fila.canal, CANAL_SHOPIFY_TIENDA);
+  assert.equal(fila.canal, CANAL_SHOPIFY);
+  assert.equal(fila.extra["SHOPIFY ORIGEN"], "TIENDA");
   assert.equal(fila.asesor, "YAHAIRA");
   assert.equal(fila.asignado_a, "YAHAIRA");
   assert.equal(fila.cliente, "Ana Pérez");
@@ -81,7 +81,8 @@ test("lo pagado entra confirmado y la landing se reconoce por EasySell", () => {
   );
   assert.equal(fila.estado, "CONFIRMADO");
   assert.equal(fila.pago_completo, "SÍ");
-  assert.equal(fila.canal, CANAL_SHOPIFY_LANDING);
+  assert.equal(fila.canal, CANAL_SHOPIFY);
+  assert.equal(fila.extra["SHOPIFY ORIGEN"], "LANDING");
   assert.equal(fila.destino, "Lima");
 });
 
