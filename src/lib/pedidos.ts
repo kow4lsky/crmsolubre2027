@@ -394,13 +394,22 @@ export function errorDeEntrega(datos: { inventario: string; envio: string; couri
   return null;
 }
 
-/** Los estados en los que inventario, envío y courier son obligatorios. */
+/** Los estados en los que celular, destino, inventario, envío y courier son obligatorios. */
 export const ESTADOS_CON_ENTREGA_OBLIGATORIA: Estado[] = ["CONFIRMADO"];
 
 /** Qué dato de entrega falta para poder guardar en ese estado, o null. */
-export function faltaParaEstado(datos: { estado: string; inventario: string; envio: string; courier: string }): string | null {
+export function faltaParaEstado(datos: {
+  estado: string;
+  celular: string;
+  destino: string;
+  inventario: string;
+  envio: string;
+  courier: string;
+}): string | null {
   if (!(ESTADOS_CON_ENTREGA_OBLIGATORIA as string[]).includes(datos.estado)) return null;
   const faltan = [
+    !datos.celular.trim() && "Celular",
+    !datos.destino && "Destino",
     !datos.inventario && "Inventario",
     !datos.envio && "Envío",
     !datos.courier && "Courier",

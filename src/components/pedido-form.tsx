@@ -186,7 +186,14 @@ export function PedidoForm({
     if (malEntrega) return setError(malEntrega);
     // Se mira el estado que se pide, aunque necesite autorización: al aprobarse
     // tiene que llegar completo.
-    const falta = faltaParaEstado({ estado: campos.estado, inventario: campos.inventario, envio: campos.envio, courier: courierFinal });
+    const falta = faltaParaEstado({
+      estado: campos.estado,
+      celular,
+      destino: campos.destino,
+      inventario: campos.inventario,
+      envio: campos.envio,
+      courier: courierFinal,
+    });
     if (falta) return setError(falta);
 
     const datos: Record<string, unknown> = {
@@ -395,7 +402,7 @@ export function PedidoForm({
           <Campo etiqueta="Cliente *" ancho>
             <input value={campos.cliente} onChange={(e) => cambiar("cliente", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Celular">
+          <Campo etiqueta={`Celular${entregaObligatoria ? " *" : ""}`}>
             <input inputMode="tel" value={campos.celular} onChange={(e) => cambiar("celular", e.target.value)} placeholder="9 dígitos" className={INPUT_CLASS} />
           </Campo>
           <Campo etiqueta="DNI o RUC">
@@ -410,7 +417,7 @@ export function PedidoForm({
           <Campo etiqueta="Distrito">
             <input value={campos.distrito} onChange={(e) => cambiar("distrito", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Destino">
+          <Campo etiqueta={`Destino${entregaObligatoria ? " *" : ""}`}>
             <Lista valor={campos.destino} opciones={OPCIONES.destino} onCambio={(v) => cambiar("destino", v)} />
           </Campo>
         </Seccion>
