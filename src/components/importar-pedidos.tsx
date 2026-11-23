@@ -105,16 +105,10 @@ export function ImportarPedidos({
           <ul className="space-y-1 text-neutral-600 dark:text-neutral-300">
             {lectura.fueraDeRango > 0 && <li>• {lectura.fueraDeRango.toLocaleString("es-PE")} quedan afuera por la fecha.</li>}
             {lectura.sinCodigo > 0 && <li>• {lectura.sinCodigo} filas sin COD: no se importan.</li>}
-            {lectura.repetidosIguales > 0 && (
+            {lectura.codigosRepetidos > 0 && (
               <li>
-                • {lectura.repetidosIguales} filas repetidas del <b>mismo pedido</b> (mismo celular o cliente): queda una sola, la
-                última, para no contar la entrega dos veces.
-              </li>
-            )}
-            {lectura.repetidosDistintos > 0 && (
-              <li>
-                • {lectura.repetidosDistintos} filas con un código ya usado pero de <b>otro cliente</b>: entran como pedidos aparte,
-                con el código terminado en -2, -3…
+                • {lectura.codigosRepetidos} códigos aparecen en más de una fila ({lectura.detalleRepetidos.length} filas): <b>no se
+                importan</b>. Quedan solo en tu Google Sheet.
               </li>
             )}
             {lectura.detalleRepetidos.length > 0 && (
