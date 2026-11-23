@@ -26,6 +26,7 @@ import {
   resumenDeProductos,
   type LineaDeProducto,
   type PedidoItem,
+  urlDeSeguimientoSwayp,
   estadosIniciales,
   puedeCambiarEstado,
   type Pedido,
@@ -564,6 +565,8 @@ export function PedidoForm({
           </details>
         )}
 
+        {!nuevo && pedido.guia_swayp && <SeguimientoSwayp pedido={pedido} timezone={timezone} />}
+
         {!nuevo && (
           <div>
             <button type="button" onClick={() => setVerHistorial(!verHistorial)} className={BOTON_SECUNDARIO}>
@@ -636,5 +639,53 @@ function Lista({ valor, opciones, onCambio }: { valor: string; opciones: readonl
         </option>
       ))}
     </select>
+  );
+}
+
+type EventoDeEnvio = { id: string; estado: string | null; comentario: string | null; created_at: string };
+
+/** La guía de Swayp (sólo lectura), su link de seguimiento y los avisos que llegaron. */
+function SeguimientoSwayp({ pedido, timezone }: { pedido: Pedido; timezone: string }) {
+  const supabase = getSupabaseBrowser();
+  const [eventos, setEventos] = useState<EventoDeEnvio[] | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("envio_eventos")
+        .select("id, estado, comentario, created_at")
+        .eq("pedido_id", pedido.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (vigente) setEventos((data ?? []) as EventoDeEnvio[]);
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [supabase, pedido.id]);
+
+  const guia = pedido.guia_swayp ?? "";
+  return (
+    <div className="rounded-xl bg-white p-3 text-sm dark:bg-white/5">
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Guía Swayp</span>
+        <span className="font-mono">{guia}</span>
+        {pedido.estado_swayp && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-white/10">{pedido.estado_swayp}</span>}
+        <a href={urlDeSeguimientoSwayp(guia)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-amber-700 underline dark:text-amber-300">
+          Ver seguimiento
+        </a>
+      </p>
+      {eventos && eventos.length > 0 && (
+        <ol className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
+          {eventos.map((e) => (
+            <li key={e.id}>
+              <b>{e.estado ?? "—"}</b> · {new Date(e.created_at).toLocaleString("es-PE", { timeZone: timezone })}
+              {e.comentario ? ` · ${e.comentario}` : ""}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }
