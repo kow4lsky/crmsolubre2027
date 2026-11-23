@@ -108,7 +108,7 @@ export const COLUMNAS_PEDIDO_BASE =
   "id, codigo, fecha_creacion, fecha_registro, monto, pedido, cliente, direccion, dni, provincia, distrito, celular, destino, estado, asesor, canal, envio, courier, costo_envio, inventario, tracking, clave, nota, adelanto, pago_completo, prox_llamada, tipo_cliente, tipo_venta, cerrado_por, comision, creado_por, asignado_a, encargado, fecha_estado, fecha_confirmado, fecha_salida, fecha_entregado, ultima_gestion, estado_etiqueta, fecha_etiqueta, estado_shalom, es_prueba, extra";
 
 /** Con la hora de la próxima llamada (migración 202611290001). */
-export const COLUMNAS_PEDIDO = `${COLUMNAS_PEDIDO_BASE}, prox_llamada_at`;
+export const COLUMNAS_PEDIDO = `${COLUMNAS_PEDIDO_BASE}, prox_llamada_at, guia_swayp, estado_swayp`;
 
 /* ------------------------------------------------------------------ tipos */
 
@@ -141,6 +141,9 @@ export type Pedido = {
   prox_llamada: string | null;
   /** Fecha y hora de la próxima llamada (el recordatorio). */
   prox_llamada_at?: string | null;
+  /** La guía de Swayp y su último estado. Los escribe el sistema, nunca la pantalla. */
+  guia_swayp?: string | null;
+  estado_swayp?: string | null;
   tipo_cliente: string | null;
   tipo_venta: string | null;
   cerrado_por: string | null;
@@ -457,4 +460,9 @@ export function fechaYHoraDeLima(momento: string | null | undefined): string {
   const local = aLocalDeLima(momento);
   if (!local) return "";
   return `${fechaCorta(local.slice(0, 10))} ${local.slice(11, 16)}`;
+}
+
+/** Página pública de Swayp para seguir una guía. */
+export function urlDeSeguimientoSwayp(guia: string): string {
+  return `https://www.swayp.co/tracking/${encodeURIComponent(guia)}`;
 }

@@ -181,7 +181,7 @@ export function PedidosPanel({
       };
       // Si falta correr algún SQL reciente, se pide lo que sí existe.
       let respuesta = await ordenada(true, COLUMNAS_PEDIDO);
-      if (respuesta.error && /prox_llamada_at/.test(respuesta.error.message)) {
+      if (respuesta.error && /prox_llamada_at|guia_swayp|estado_swayp|does not exist/.test(respuesta.error.message)) {
         respuesta = await ordenada(true, COLUMNAS_PEDIDO_BASE);
       }
       if (respuesta.error && /codigo_num/.test(respuesta.error.message)) {
@@ -386,7 +386,7 @@ export function PedidosPanel({
                   className="size-4 accent-amber-500"
                 />
               </th>
-              {["Cod", "F. reg", "Monto", "Pedido", "Cliente", "Celular", "DNI", "Tracking", "Estado Shalom", "Estado CRM", "Provincia", "Destino", "Courier", "Asesor"].map((t) => (
+              {["Cod", "F. reg", "Monto", "Pedido", "Cliente", "Celular", "DNI", "Tracking", "Estado courier", "Estado CRM", "Provincia", "Destino", "Courier", "Asesor"].map((t) => (
                 <th key={t} className="whitespace-nowrap px-2 py-2.5 font-semibold">
                   {t}
                 </th>
@@ -429,7 +429,7 @@ export function PedidosPanel({
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.celular || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.dni || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.tracking || "—"}</td>
-                <td className="whitespace-nowrap px-2 py-2">{p.estado_shalom || "—"}</td>
+                <td className="whitespace-nowrap px-2 py-2">{p.estado_swayp || p.estado_shalom || "—"}</td>
                 <td className="px-2 py-2">
                   <EstadoChip estado={p.estado} />
                 </td>

@@ -11,9 +11,9 @@
  * Módulo puro: lo usan el servidor y el panel, y lo prueba el runner de Node.
  */
 
-export type Integracion = "openai" | "ycloud" | "zernio" | "shopify";
+export type Integracion = "openai" | "ycloud" | "zernio" | "shopify" | "swayp";
 
-export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify"];
+export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify", "swayp"];
 
 export type Campo = {
   clave: string;
@@ -231,6 +231,53 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
       },
     ],
     webhook: { ruta: "/api/webhooks/shopify", donde: "Shopify" },
+  },
+  swayp: {
+    integracion: "swayp",
+    nombre: "Swayp (motorizado de Lima)",
+    descripcion:
+      "Cada cambio de estado de una guía de Swayp actualiza el pedido (EN TRÁNSITO, ENTREGADO, EN DEVOLUCIÓN) y queda en el historial de envíos.",
+    pasos: [
+      { texto: "Copia esta URL con el botón.", con: "url" },
+      {
+        texto: "En Swayp → Maestros → Integraciones → Swayp API, en el paso 3 (Notificaciones de estado), pega la URL en URL de destino.",
+      },
+      {
+        texto: "En esa misma pantalla toca Ver secreto, cópialo entero y pégalo acá.",
+        con: "webhook_secret",
+      },
+      {
+        texto: "Opcional: en Opciones avanzadas puedes cargar el token de Swayp API, la URL base y el correo de la cuenta. Con eso el CRM trae el detalle de cada guía y ubica por celular las que no tienen guía en el CRM. Después, guarda.",
+        con: "guardar",
+      },
+    ],
+    campos: [
+      {
+        clave: "webhook_secret",
+        etiqueta: "Secreto de las notificaciones",
+        secreto: true,
+        requerido: true,
+        env: "SWAYP_WEBHOOK_SECRET",
+      },
+      { clave: "api_token", etiqueta: "Token de Swayp API", secreto: true, requerido: false, env: "SWAYP_API_TOKEN" },
+      {
+        clave: "base_url",
+        etiqueta: "URL base de la API",
+        secreto: false,
+        requerido: false,
+        env: "SWAYP_API_BASE_URL",
+        formato: "url",
+        ayuda: "Swayp la entrega junto con el token (desarrollo@swayp.co).",
+      },
+      {
+        clave: "email",
+        etiqueta: "Correo de la cuenta en Swayp",
+        secreto: false,
+        requerido: false,
+        env: "SWAYP_EMAIL",
+      },
+    ],
+    webhook: { ruta: "/api/webhooks/swayp", donde: "Swayp" },
   },
 };
 
