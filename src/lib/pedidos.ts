@@ -393,3 +393,18 @@ export function errorDeEntrega(datos: { inventario: string; envio: string; couri
   }
   return null;
 }
+
+/** Los estados en los que inventario, envío y courier son obligatorios. */
+export const ESTADOS_CON_ENTREGA_OBLIGATORIA: Estado[] = ["CONFIRMADO"];
+
+/** Qué dato de entrega falta para poder guardar en ese estado, o null. */
+export function faltaParaEstado(datos: { estado: string; inventario: string; envio: string; courier: string }): string | null {
+  if (!(ESTADOS_CON_ENTREGA_OBLIGATORIA as string[]).includes(datos.estado)) return null;
+  const faltan = [
+    !datos.inventario && "Inventario",
+    !datos.envio && "Envío",
+    !datos.courier && "Courier",
+  ].filter(Boolean) as string[];
+  if (!faltan.length) return null;
+  return `Para dejarlo ${datos.estado} completa: ${faltan.join(", ")}.`;
+}
