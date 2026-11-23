@@ -141,9 +141,9 @@ export async function GET() {
 
 function describirSecreto(secreto: string | undefined): string {
   if (!secreto) return "no está cargado";
-  if (secreto !== secreto.trim()) return "tiene espacios al principio o al final: sacalos";
+  if (secreto !== secreto.trim()) return "tiene espacios al principio o al final: sácalos";
   if (!secreto.startsWith("whsec_")) {
-    return `le falta el prefijo whsec_ (${secreto.length} caracteres). Pegá el secreto entero, como lo muestra YCloud.`;
+    return `le falta el prefijo whsec_ (${secreto.length} caracteres). Pega el secreto entero, como lo muestra YCloud.`;
   }
   // Los últimos cuatro caracteres alcanzan para compararlo de un vistazo con el
   // que muestra el panel, y dejan los otros veintiocho sin revelar. Cada

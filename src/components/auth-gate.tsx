@@ -52,7 +52,7 @@ export function AuthGate({
             <div>
               <h1 className="text-lg font-semibold">Estás viendo el CRM en modo demo</h1>
               <p className="mt-2 text-sm leading-6 text-neutral-500">
-                Configurá <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> para conectar usuarios, contactos y métricas reales.
+                Configura <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> para conectar usuarios, contactos y métricas reales.
               </p>
             </div>
           ) : context.status === "signed-out" ? (
@@ -118,9 +118,9 @@ function SignIn() {
 
   return (
     <form onSubmit={ingresar}>
-      <h1 className="text-lg font-semibold">Ingresá a tu CRM</h1>
+      <h1 className="text-lg font-semibold">Ingresa a tu CRM</h1>
       <p className="mt-2 text-sm leading-6 text-neutral-500">
-        Acceso restringido. Entrá con el mail y la contraseña que te dio el administrador.
+        Acceso restringido. Entra con el mail y la contraseña que te dio el administrador.
       </p>
 
       <label htmlFor="crm-email" className="mt-5 block text-sm font-medium">
@@ -165,7 +165,7 @@ function SignIn() {
       <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-neutral-500">
         <KeyRound className="mt-0.5 size-3.5 shrink-0" />
         <span>
-          ¿Olvidaste la contraseña? Pedile a quien administra el CRM que te la cambie en Supabase.
+          ¿Olvidaste la contraseña? Pídele a quien administra el CRM que te la cambie en Supabase.
         </span>
       </p>
     </form>
@@ -203,7 +203,7 @@ function NoAccess({ email }: { email: string }) {
       <h1 className="mt-4 text-lg font-semibold">Este mail no tiene acceso</h1>
       <p className="mt-2 text-sm leading-6 text-neutral-500">
         Entraste como <strong className="text-neutral-700 dark:text-neutral-200">{email}</strong>, pero no se te pudo dar
-        acceso al CRM. Probá recargar la página; si sigue igual, pedile a quien administra el CRM
+        acceso al CRM. Prueba recargar la página; si sigue igual, pídele a quien administra el CRM
         que revise tu cuenta en Supabase.
       </p>
 
@@ -241,7 +241,7 @@ function CreateWorkspace({ email }: { email: string }) {
 
     if (!session) {
       setPending(false);
-      return setError("Tu sesión venció. Ingresá nuevamente.");
+      return setError("Tu sesión venció. Ingresa nuevamente.");
     }
 
     const response = await fetch("/api/workspaces", {
@@ -261,7 +261,7 @@ function CreateWorkspace({ email }: { email: string }) {
       <span className="grid size-12 place-items-center rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
         <Building2 className="size-6" />
       </span>
-      <h1 className="mt-4 text-lg font-semibold">Creá tu workspace</h1>
+      <h1 className="mt-4 text-lg font-semibold">Crea tu workspace</h1>
       <p className="mt-2 text-sm leading-6 text-neutral-500">
         Entraste como <strong className="text-neutral-700 dark:text-neutral-200">{email}</strong>. El workspace agrupa tus
         contactos, conversaciones y oportunidades.

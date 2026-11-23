@@ -32,7 +32,7 @@ export const aproxTokens = (chars: number) => Math.round(chars / 4);
 export function errorDePrompt(texto: string): string | null {
   const largo = texto.trim().length;
   if (largo > MAX_SYSTEM_PROMPT_CHARS) {
-    return `Las instrucciones tienen ${largo.toLocaleString("es-AR")} caracteres y el máximo es ${MAX_SYSTEM_PROMPT_CHARS.toLocaleString("es-AR")}.`;
+    return `Las instrucciones tienen ${largo.toLocaleString("es-PE")} caracteres y el máximo es ${MAX_SYSTEM_PROMPT_CHARS.toLocaleString("es-PE")}.`;
   }
   return null;
 }

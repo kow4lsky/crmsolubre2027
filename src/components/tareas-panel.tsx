@@ -295,11 +295,11 @@ export function TareasPanel({
           ) : buscando ? (
             "Buscando tareas…"
           ) : alcance === "mias" ? (
-            "Lo que tenés que hacer vos. Te avisamos en este dispositivo a la hora que elijas."
+            "Lo que tienes que hacer tú. Te avisamos en este dispositivo a la hora que elijas."
           ) : alcance === "delegadas" ? (
             "Las que le diste a otras personas, para seguirlas."
           ) : (
-            "Lo que tiene cada uno. Sólo podés cambiar las tuyas y las que diste."
+            "Lo que tiene cada uno. Sólo puedes cambiar las tuyas y las que diste."
           )}
         </p>
       </Card>
@@ -351,7 +351,7 @@ export function TareasPanel({
                 ? "Cuando se corra la migración de tareas en Supabase, esta sección empieza a funcionar."
                 : estado === "cerradas"
                   ? "Las tareas que marques como hechas o canceladas van a quedar acá."
-                  : "Programá llamadas, seguimientos o lo que tengas que hacer, y el CRM te avisa a la hora."
+                  : "Programa llamadas, seguimientos o lo que tengas que hacer, y el CRM te avisa a la hora."
             }
             action={
               !buscando && !tareasError && estado === "pendientes" ? (
@@ -447,7 +447,7 @@ export function TareaItem({
   const persona =
     mostrar === "para"
       ? tarea.asignadaA === access.userId
-        ? "Para vos"
+        ? "Para tú"
         : usuarios.length > 0
           ? `Para ${nombreCorto(usuarios, tarea.asignadaA)}`
           : null
@@ -605,7 +605,7 @@ export function TareaItem({
         <Modal title="Borrar la tarea" onClose={() => setConfirmando(false)}>
           <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">
             Se borra <strong>{tarea.titulo}</strong> y no queda registro. Si no se va a hacer y
-            querés que quede anotado, cancelala desde Editar.
+            quieres que quede anotado, cancélala desde Editar.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <button
@@ -691,7 +691,7 @@ export function TareaModal({
       // La zona la resuelve el navegador, igual que al agendar una cita.
       const venceAt = fromLocalInputValue(cuando);
       if (!venceAt) {
-        setError("Completá la fecha y la hora.");
+        setError("Completa la fecha y la hora.");
         return;
       }
 
@@ -814,7 +814,7 @@ export function TareaModal({
           <div className="mt-4 text-sm">
             <p className="font-medium">Para quién</p>
             <p className="mt-2 text-neutral-500">
-              {asignadaA === access.userId ? "Vos" : nombreCorto(usuarios, asignadaA)}. Para darle
+              {asignadaA === access.userId ? "Tú" : nombreCorto(usuarios, asignadaA)}. Para darle
               tareas a otras personas hace falta un permiso.
             </p>
           </div>
@@ -1018,7 +1018,7 @@ function BuscadorDeLead({
           onFocus={() => setAbierto(true)}
           onBlur={() => setAbierto(false)}
           onKeyDown={teclas}
-          placeholder="Buscá por nombre, teléfono o mail"
+          placeholder="Busca por nombre, teléfono o mail"
           className={`${INPUT_CLASS} pl-9`}
         />
       </div>
@@ -1211,7 +1211,7 @@ export function TareasDelLead({
       ) : grupos.length === 0 ? (
         <p className="py-8 text-center text-sm text-neutral-500">
           {estado === "pendientes"
-            ? `No hay nada pendiente con ${contactName}. Anotá la próxima llamada o seguimiento y te avisamos.`
+            ? `No hay nada pendiente con ${contactName}. Anota la próxima llamada o seguimiento y te avisamos.`
             : "Todavía no se cerró ninguna tarea de este lead."}
         </p>
       ) : (

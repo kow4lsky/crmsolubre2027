@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const context = await getWorkspaceContext();
   if (context.status !== "ready") {
-    return NextResponse.json({ error: "Entrá al CRM antes de abrir esta URL." }, { status: 401 });
+    return NextResponse.json({ error: "Entra al CRM antes de abrir esta URL." }, { status: 401 });
   }
 
   const crudas = await pedirPlantillasCrudas();

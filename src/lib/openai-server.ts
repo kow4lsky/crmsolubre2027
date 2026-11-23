@@ -424,8 +424,8 @@ export async function describeImage(
               {
                 type: "text",
                 text:
-                  "Describí esta imagen en español rioplatense, en dos o tres oraciones. " +
-                  "Es una foto que un cliente le mandó a una empresa por chat: mencioná qué se " +
+                  "Describe esta imagen en español peruano, en dos o tres oraciones. " +
+                  "Es una foto que un cliente le mandó a una empresa por chat: menciona qué se " +
                   "ve y, si hay texto o números legibles, transcribilos.",
               },
               { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },

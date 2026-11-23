@@ -293,7 +293,7 @@ function AbrirChat({
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
       <p className="text-sm text-neutral-500">
-        Todavía no hay chat con esta persona. Podés abrirlo vos y escribirle primero.
+        Todavía no hay chat con esta persona. Puedes abrirlo tú y escribirle primero.
       </p>
       <button
         type="button"
@@ -357,7 +357,7 @@ function StageBar({
         <OpcionesDeEtapa stages={stages} />
       </select>
       <span className="text-sm text-neutral-500">
-        US$ {opportunity.value.toLocaleString("es-AR")}
+        S/ {opportunity.value.toLocaleString("es-PE")}
       </span>
     </div>
   );
@@ -394,8 +394,8 @@ function BotTag({ lead, onNotice }: { lead: LeadDetail; onNotice: (message: stri
       disabled={pending}
       title={
         frozen
-          ? "La IA no responde a esta persona. Tocá para reactivarla."
-          : "La IA responde sola. Tocá para frenarla."
+          ? "La IA no responde a esta persona. Toca para reactivarla."
+          : "La IA responde sola. Toca para frenarla."
       }
       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         frozen
@@ -547,7 +547,7 @@ function ContactForm({ lead, onNotice }: { lead: LeadDetail; onNotice: (message:
         <>
           <div>
             <label className="block text-sm font-medium" htmlFor="lead-value">
-              Valor (US$)
+              Valor (S/)
             </label>
             <input
               id="lead-value"
@@ -601,7 +601,7 @@ function AgendaTab({ lead, timezone }: { lead: LeadDetail; timezone: string }) {
   if (lead.appointments.length === 0) {
     return (
       <p className="px-5 py-10 text-center text-sm text-neutral-500">
-        Sin citas para esta persona. Podés agendar una desde la sección Agenda.
+        Sin citas para esta persona. Puedes agendar una desde la sección Agenda.
       </p>
     );
   }

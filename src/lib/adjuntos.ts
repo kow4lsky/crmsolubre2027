@@ -114,8 +114,8 @@ export function revisarAdjunto(
       ok: false,
       error:
         adjunto.kind === "imagen"
-          ? `La imagen pesa más de ${megas(adjunto.maxBytes)}. Mandá una más liviana.`
-          : `El video pesa más de ${megas(adjunto.maxBytes)}. Recortalo o bajale la calidad.`,
+          ? `La imagen pesa más de ${megas(adjunto.maxBytes)}. Manda una más liviana.`
+          : `El video pesa más de ${megas(adjunto.maxBytes)}. Recórtalo o bájale la calidad.`,
     };
   }
 

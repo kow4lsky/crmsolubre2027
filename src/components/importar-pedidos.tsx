@@ -53,7 +53,7 @@ export function ImportarPedidos({
       const tanda = lectura.filas.slice(i, i + TANDA_DE_IMPORTACION);
       const { error: falla } = await supabase.rpc("importar_pedidos", { ws: workspaceId, filas: tanda });
       if (falla) {
-        setError(`Se cortó en el pedido ${i + 1} de ${total}: ${falla.message}. Lo que ya entró quedó guardado; podés volver a importar el mismo archivo y se completa.`);
+        setError(`Se cortó en el pedido ${i + 1} de ${total}: ${falla.message}. Lo que ya entró quedó guardado; puedes volver a importar el mismo archivo y se completa.`);
         setAvance(null);
         return;
       }
@@ -70,11 +70,11 @@ export function ImportarPedidos({
       {!lectura && (
         <div className="mt-4 space-y-4 text-sm">
           <ol className="list-decimal space-y-1 pl-5 text-neutral-600 dark:text-neutral-300">
-            <li>Abrí tu Google Sheet (o una copia) y andá a la pestaña <b>base</b>.</li>
+            <li>Abre tu Google Sheet (o una copia) y ve a la pestaña <b>base</b>.</li>
             <li>
               Menú <b>Archivo → Descargar → Valores separados por comas (.csv)</b>.
             </li>
-            <li>Elegí ese archivo acá abajo. Tu planilla no se modifica.</li>
+            <li>Elige ese archivo acá abajo. Tu planilla no se modifica.</li>
           </ol>
           <input
             type="file"

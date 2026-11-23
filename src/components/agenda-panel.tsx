@@ -159,8 +159,8 @@ export function AgendaPanel({
       {puedeAgendar && (
         <div className="mb-5 flex justify-end">
           <button
-            onClick={() => (disabled ? onNotice("Primero cargá un contacto.") : setShowForm(true))}
-            title={disabled ? "Necesitás al menos un contacto" : undefined}
+            onClick={() => (disabled ? onNotice("Primero carga un contacto.") : setShowForm(true))}
+            title={disabled ? "Necesitas al menos un contacto" : undefined}
             className={`${PRIMARY_BUTTON_CLASS} h-11 max-md:w-full ${disabled ? "opacity-60" : ""}`}
           >
             <Plus className="size-4" />
@@ -253,10 +253,10 @@ export function AgendaPanel({
             buscando ? (
               `Buscando las citas de ${textoDelRango(filtro, hoy)}…`
             ) : (
-              `${visibles.length === 0 ? "No hay citas" : visibles.length === 1 ? "1 cita" : `${visibles.length} citas`} ${textoDelRango(filtro, hoy)}.${recortada ? " Se muestran las primeras: acotá el rango para verlas todas." : ""}`
+              `${visibles.length === 0 ? "No hay citas" : visibles.length === 1 ? "1 cita" : `${visibles.length} citas`} ${textoDelRango(filtro, hoy)}.${recortada ? " Se muestran las primeras: acota el rango para verlas todas." : ""}`
             )
           ) : (
-            "Estás viendo las próximas citas. Elegí una fecha para ver las de ese día, pasadas incluidas."
+            "Estás viendo las próximas citas. Elige una fecha para ver las de ese día, pasadas incluidas."
           )}
         </p>
       </Card>
@@ -286,7 +286,7 @@ export function AgendaPanel({
             description={
               buscando
                 ? "Un segundo: estamos yendo a buscarlas."
-                : `No hay ninguna cita ${textoDelRango(filtro, hoy)}. Probá con otro día o volvé a las próximas.`
+                : `No hay ninguna cita ${textoDelRango(filtro, hoy)}. Prueba con otro día o vuelve a las próximas.`
             }
             action={
               buscando ? undefined : (
@@ -305,7 +305,7 @@ export function AgendaPanel({
             title="Agenda vacía"
             description={
               disabled
-                ? "Primero cargá un contacto: toda cita se coordina con alguien."
+                ? "Primero carga un contacto: toda cita se coordina con alguien."
                 : "Las visitas y llamadas que coordines van a listarse acá."
             }
             action={
@@ -630,7 +630,7 @@ function AppointmentModal({
       // dónde se está agendando.
       const inicio = fromLocalInputValue(startTime);
       if (!inicio) {
-        setError("Completá la fecha y la hora.");
+        setError("Completa la fecha y la hora.");
         return;
       }
 
@@ -650,8 +650,8 @@ function AppointmentModal({
       <Modal title="Agendar cita" onClose={close}>
         <EmptyState
           icon={UsersRound}
-          title="Necesitás un contacto"
-          description="Toda cita se coordina con un contacto. Cargá uno primero desde la sección Contactos."
+          title="Necesitas un contacto"
+          description="Toda cita se coordina con un contacto. Carga uno primero desde la sección Contactos."
         />
       </Modal>
     );

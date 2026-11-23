@@ -325,7 +325,7 @@ function detalleDelError(error: unknown): string {
   const mensaje = error instanceof Error ? error.message : "";
 
   if (status === 403) return `403 — el servicio rechazó la clave VAPID. ${cuerpo}`.trim();
-  if (status === 404 || status === 410) return `${status} — este dispositivo ya no existe, volvé a activar los avisos.`;
+  if (status === 404 || status === 410) return `${status} — este dispositivo ya no existe, vuelve a activar los avisos.`;
   if (status) return `${status} — ${cuerpo || mensaje || "sin detalle"}`.slice(0, 300);
   return (mensaje || "Fallo desconocido al enviar.").slice(0, 300);
 }

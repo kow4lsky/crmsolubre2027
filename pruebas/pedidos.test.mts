@@ -132,3 +132,24 @@ test("un pedido sale del inventario: Lima al entregar, Provincia desde EN TRÁNS
   assert.equal(saleDeInventario("Provincia", "ENTREGADO"), true);
   assert.equal(saleDeInventario("Provincia", "RECHAZADO"), false);
 });
+
+test("inventario, envío y courier van de la mano", async () => {
+  const { enviosPara, courierPara, ajustarEntrega, errorDeEntrega } = await import("../src/lib/pedidos.ts");
+  assert.deepEqual(enviosPara("SWAYP"), ["Express", "Prog.Normal"]);
+  assert.deepEqual(enviosPara("SOLUBRE"), ["Indriver", "Prov.Agencia"]);
+  assert.deepEqual(enviosPara(""), []);
+  assert.deepEqual(courierPara("SWAYP", "Express"), { opciones: ["Swayp"], fijo: "Swayp" });
+  assert.deepEqual(courierPara("SOLUBRE", "Indriver"), { opciones: ["Solubre"], fijo: "Solubre" });
+  assert.deepEqual(courierPara("SOLUBRE", "Prov.Agencia").opciones, ["Shalom", "Olva", "Marvisur"]);
+
+  // Cambiar de SOLUBRE a SWAYP vacía el envío y pone Swayp solo.
+  assert.deepEqual(ajustarEntrega({ inventario: "SWAYP", envio: "Indriver", courier: "Solubre" }), {
+    inventario: "SWAYP", envio: "", courier: "Swayp",
+  });
+  assert.deepEqual(ajustarEntrega({ inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "Olva" }), {
+    inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "Olva",
+  });
+  assert.equal(errorDeEntrega({ inventario: "SOLUBRE", envio: "Express", courier: "" })?.startsWith("El envío Express"), true);
+  assert.equal(errorDeEntrega({ inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "Swayp" })?.startsWith("El courier"), true);
+  assert.equal(errorDeEntrega({ inventario: "", envio: "Express", courier: "x" }), null);
+});

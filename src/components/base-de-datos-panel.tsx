@@ -333,7 +333,7 @@ function CargarContactos({ stages }: { stages: StageRow[] }) {
           </select>
           {stages.length === 0 && (
             <p className="mt-1.5 text-xs text-red-600">
-              El embudo no tiene columnas: creá una antes de importar.
+              El embudo no tiene columnas: crea una antes de importar.
             </p>
           )}
         </div>

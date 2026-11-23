@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const context = await getWorkspaceContext();
   if (context.status !== "ready") {
-    return NextResponse.json({ error: "Entrá al CRM antes de abrir esta URL." }, { status: 401 });
+    return NextResponse.json({ error: "Entra al CRM antes de abrir esta URL." }, { status: 401 });
   }
 
   // Se piden 100 y no las 20 por defecto: con menos, una cuenta que Zernio sí

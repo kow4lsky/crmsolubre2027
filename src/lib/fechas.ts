@@ -47,18 +47,18 @@ export function fromLocalInputValue(value: string): string | null {
  * zona se guarda en el workspace y no se toma del dispositivo.
  */
 
-/** El CRM nació operando en Argentina; ahí sigue el grueso del uso. */
-export const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
+/** Este CRM opera en Perú: la hora por omisión es la de Lima. */
+export const DEFAULT_TIMEZONE = "America/Lima";
 
 /** Lo que ofrece el selector de Configuración. */
 export const TIMEZONE_OPTIONS: { zone: string; label: string }[] = [
+  { zone: "America/Lima", label: "Perú (Lima)" },
   { zone: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
   { zone: "America/Montevideo", label: "Uruguay (Montevideo)" },
   { zone: "America/Santiago", label: "Chile (Santiago)" },
   { zone: "America/Asuncion", label: "Paraguay (Asunción)" },
   { zone: "America/La_Paz", label: "Bolivia (La Paz)" },
   { zone: "America/Sao_Paulo", label: "Brasil (São Paulo)" },
-  { zone: "America/Lima", label: "Perú (Lima)" },
   { zone: "America/Bogota", label: "Colombia (Bogotá)" },
   { zone: "America/Caracas", label: "Venezuela (Caracas)" },
   { zone: "America/Guayaquil", label: "Ecuador (Guayaquil)" },
@@ -193,7 +193,7 @@ export function monthStartKey(dayKey: string): string {
 
 /** "martes, 18 de agosto", con el día que corresponde a la zona del workspace. */
 export function longDateInZone(instant: Date, timeZone: string): string {
-  return instant.toLocaleDateString("es-AR", {
+  return instant.toLocaleDateString("es-PE", {
     timeZone,
     weekday: "long",
     day: "numeric",

@@ -96,7 +96,7 @@ export function dineroCompacto(monto: number): string {
   const signo = valor < 0 ? "-" : "";
   const absoluto = Math.abs(valor);
 
-  if (absoluto >= 1_000_000) return `${signo}US$ ${(absoluto / 1_000_000).toFixed(1)}M`;
-  if (absoluto >= 1000) return `${signo}US$ ${(absoluto / 1000).toFixed(1)}k`;
-  return `${signo}US$ ${absoluto.toFixed(0)}`;
+  if (absoluto >= 1_000_000) return `${signo}S/ ${(absoluto / 1_000_000).toFixed(1)}M`;
+  if (absoluto >= 1000) return `${signo}S/ ${(absoluto / 1000).toFixed(1)}k`;
+  return `${signo}S/ ${absoluto.toFixed(0)}`;
 }

@@ -68,13 +68,13 @@ export function errorDeRegla(regla: {
   desdeStageId: string | null;
   criterio: string;
 }): string | null {
-  if (!regla.stageId) return "Elegí a qué columna mueve la regla.";
+  if (!regla.stageId) return "Elige a qué columna mueve la regla.";
 
   const criterio = regla.criterio.trim();
   if (criterio.length < MIN_CRITERIO_CHARS) {
     // Un criterio vacío no es una regla incompleta: es una regla que se cumple
     // siempre, y el modelo la leería así.
-    return "Escribí cuándo tiene que mover. Sin criterio, la regla se cumpliría siempre.";
+    return "Escribe cuándo tiene que mover. Sin criterio, la regla se cumpliría siempre.";
   }
   if (criterio.length > MAX_CRITERIO_CHARS) {
     return `El criterio no puede pasar de ${MAX_CRITERIO_CHARS} caracteres: viaja al modelo en cada mensaje.`;
@@ -102,7 +102,7 @@ export function errorDeLasReglas(reglas: ReglaDeMovimiento[]): string | null {
   for (const regla of reglas) {
     const clave = `${regla.desdeStageId ?? ""}>${regla.stageId}`;
     if (vistas.has(clave)) {
-      return "Hay dos reglas para el mismo movimiento. Dejá una sola y juntá los criterios.";
+      return "Hay dos reglas para el mismo movimiento. Deja una sola y junta los criterios.";
     }
     vistas.add(clave);
   }
@@ -151,13 +151,13 @@ export type ReglaConNombre = { stageId: string; nombre: string; criterio: string
  */
 export function instruccionesDeClasificacion(reglas: ReglaConNombre[]): string {
   return [
-    "Sos un clasificador de un CRM. Mirás una conversación entre un vendedor y una",
-    "persona, y decidís si corresponde mover su tarjeta a otra columna del embudo.",
+    "Eres un clasificador de un CRM. Miras una conversación entre un vendedor y una",
+    "persona, y decides si corresponde mover su tarjeta a otra columna del embudo.",
     "",
     "Las columnas posibles son exactamente éstas, con el criterio de cada una:",
     ...reglas.map((regla) => `- "${regla.nombre}": ${regla.criterio}`),
     "",
-    'Contestás sólo con un objeto JSON: {"etapa": "<nombre exacto o ' +
+    'Contestas sólo con un objeto JSON: {"etapa": "<nombre exacto o ' +
       SIN_MOVIMIENTO +
       '>", "motivo": "<una frase corta>"}',
     "",
@@ -165,7 +165,7 @@ export function instruccionesDeClasificacion(reglas: ReglaConNombre[]): string {
     `- Si ninguno de los criterios se cumple, la etapa es "${SIN_MOVIMIENTO}".`,
     "- El nombre va copiado tal cual de la lista. No inventes ni abrevies.",
     "- El criterio se tiene que cumplir con lo que la persona dijo, no con lo que",
-    "  vos supongas que va a pasar. Ante la duda, ninguna.",
+    "  tú supongas que va a pasar. Ante la duda, ninguna.",
     "- El motivo cita lo que la persona dijo y que hace que el criterio se cumpla.",
     `  Si la etapa es "${SIN_MOVIMIENTO}", el motivo puede ir vacío.`,
   ].join("\n");

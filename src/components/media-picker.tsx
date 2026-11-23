@@ -165,7 +165,7 @@ export function MediaPicker({
         }}
         enterKeyHint="send"
         maxLength={MAX_CAPTION}
-        placeholder="Agregá un texto (opcional)…"
+        placeholder="Agrega un texto (opcional)…"
         disabled={enviando}
         autoFocus
         className="min-w-0 flex-1 basis-full rounded-lg border border-[#ddd8c9] bg-[#f9f8f3] px-3 py-2 text-base outline-none transition focus:ring-2 focus:ring-amber-500 disabled:opacity-60 sm:basis-auto dark:border-white/10 dark:bg-white/5"

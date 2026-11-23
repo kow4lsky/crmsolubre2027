@@ -80,7 +80,7 @@ export async function salidaParaEscribirPrimero(
   return {
     ok: false,
     error:
-      "Todavía no hay un WhatsApp conectado desde el que escribir. Vinculalo en Ajustes y volvé a intentar.",
+      "Todavía no hay un WhatsApp conectado desde el que escribir. Vincúlalo en Ajustes y vuelve a intentar.",
   };
 }
 

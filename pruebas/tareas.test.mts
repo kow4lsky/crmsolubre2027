@@ -233,7 +233,7 @@ test("si RLS esconde el lead, la tarea queda sin nombre pero no se cae", () => {
 test("los errores de la base se leen en castellano", () => {
   assert.equal(
     errorDeTarea('new row violates row-level security policy for table "tareas"'),
-    "No tenés permiso para hacer eso con esta tarea.",
+    "No tienes permiso para hacer eso con esta tarea.",
   );
   assert.match(
     errorDeTarea("Could not find the table 'public.tareas' in the schema cache"),

@@ -126,7 +126,7 @@ function Fila({
   const delEntorno = estado.campos.some((campo) => campo.origen === "entorno");
 
   const etiqueta = estado.ilegible
-    ? { texto: "Volvé a cargarla", clase: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" }
+    ? { texto: "Vuelve a cargarla", clase: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" }
     : estado.configurada && tocada
       ? {
           texto: delEntorno ? "Conectada (Vercel)" : "Conectada",
@@ -230,7 +230,7 @@ function Formulario({
     const visible = visibles.get(campo.clave);
     const placeholder = campo.secreto
       ? visible?.origen === "panel"
-        ? "•••••••• guardada (dejala vacía para conservarla)"
+        ? "•••••••• guardada (déjala vacía para conservarla)"
         : visible?.origen === "entorno"
           ? `Tomada de ${campo.env} en Vercel`
           : campo.placeholder ?? ""
@@ -309,12 +309,12 @@ function Formulario({
             </p>
           ) : (
             <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
-              Guardado. Cuando cierres esta pantalla no se vuelve a ver: copiala ahora.
+              Guardado. Cuando cierres esta pantalla no se vuelve a ver: cópiala ahora.
             </p>
           )}
           <details className="mt-2 text-xs text-neutral-500">
             <summary className="cursor-pointer">¿{donde} te pide el secreto por separado?</summary>
-            <p className="mt-1">Es este. Si lo cargás, tiene que ser exactamente igual.</p>
+            <p className="mt-1">Es este. Si lo cargas, tiene que ser exactamente igual.</p>
             <Copiable texto={secretoNuevo} />
           </details>
         </div>
@@ -324,7 +324,7 @@ function Formulario({
           {secretoGenerable && (
             <p className="mt-1 text-xs text-neutral-500">
               Esta todavía no trae el secreto. Si ya está andando, no toques nada. Para armarla con el secreto
-              incluido, tocá Generar más arriba y Guardar.
+              incluido, toca Generar más arriba y Guardar.
             </p>
           )}
         </>
@@ -345,7 +345,7 @@ function Formulario({
         <p className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           Las claves guardadas no se pueden leer: probablemente cambió INTEGRATIONS_ENCRYPTION_KEY en
-          Vercel. Volvé a escribirlas y guardá.
+          Vercel. Vuelve a escribirlas y guarda.
         </p>
       )}
 
@@ -439,18 +439,18 @@ function FaltaLaClave({ problema }: { problema: string }) {
       <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">{problema}</p>
       <ol className="mt-3 list-decimal space-y-1.5 pl-5">
         <li>
-          En Vercel, abrí tu proyecto y andá a <strong>Settings → Environment Variables</strong>.
+          En Vercel, abre tu proyecto y ve a <strong>Settings → Environment Variables</strong>.
         </li>
         <li>
-          Agregá una variable con el nombre <code className="font-mono">INTEGRATIONS_ENCRYPTION_KEY</code> y
-          este valor, que ya generamos para vos:
+          Agrega una variable con el nombre <code className="font-mono">INTEGRATIONS_ENCRYPTION_KEY</code> y
+          este valor, que ya generamos para ti:
           <Copiable texto={clave} />
         </li>
         <li>
-          Tocá <strong>Save</strong> y después, en <strong>Deployments</strong>, los tres puntos del último →{" "}
+          Toca <strong>Save</strong> y después, en <strong>Deployments</strong>, los tres puntos del último →{" "}
           <strong>Redeploy</strong>.
         </li>
-        <li>Volvé a esta pantalla. Este aviso desaparece y ya podés guardar las claves.</li>
+        <li>Vuelve a esta pantalla. Este aviso desaparece y ya puedes guardar las claves.</li>
       </ol>
       <p className="mt-3 text-xs text-amber-900/80 dark:text-amber-200/80">
         No la cambies después: las claves guardadas con ella dejarían de poder leerse.

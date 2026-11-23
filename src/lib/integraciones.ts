@@ -75,12 +75,12 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
       "La key que pagan los agentes, las respuestas sugeridas, el asistente y la lectura de audios e imágenes.",
     pasos: [
       {
-        texto: "Creá una key en https://platform.openai.com/api-keys con Create new secret key y pegala acá.",
+        texto: "Crea una key en https://platform.openai.com/api-keys con Create new secret key y pégala acá.",
         con: "api_key",
       },
-      { texto: "Guardá.", con: "guardar" },
+      { texto: "Guarda.", con: "guardar" },
       {
-        texto: "En https://platform.openai.com/settings/organization/limits poné un tope de gasto por mes: es la única protección real si la key se filtra.",
+        texto: "En https://platform.openai.com/settings/organization/limits pon un tope de gasto por mes: es la única protección real si la key se filtra.",
       },
     ],
     campos: [
@@ -99,20 +99,20 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
     nombre: "YCloud (WhatsApp oficial)",
     descripcion: "WhatsApp por la API oficial de Meta, con plantillas aprobadas.",
     pasos: [
-      { texto: "Copiá la API key de tu cuenta de YCloud y pegala acá.", con: "api_key" },
+      { texto: "Copia la API key de tu cuenta de YCloud y pégala acá.", con: "api_key" },
       {
-        texto: "En YCloud, creá un webhook con esta URL y el evento whatsapp.inbound_message.received.",
+        texto: "En YCloud, crea un webhook con esta URL y el evento whatsapp.inbound_message.received.",
         con: "url",
       },
       {
-        texto: "YCloud te muestra el secreto del webhook, que empieza con whsec_: copialo entero acá.",
+        texto: "YCloud te muestra el secreto del webhook, que empieza con whsec_: cópialo entero acá.",
         con: "webhook_secret",
       },
       {
-        texto: "Si querés, el número por el que se le escribe primero a un contacto nuevo, en formato internacional.",
+        texto: "Si quieres, el número por el que se le escribe primero a un contacto nuevo, en formato internacional.",
         con: "phone_number",
       },
-      { texto: "Guardá.", con: "guardar" },
+      { texto: "Guarda.", con: "guardar" },
     ],
     campos: [
       { clave: "api_key", etiqueta: "API key", secreto: true, requerido: true, env: "YCLOUD_API_KEY" },
@@ -151,14 +151,14 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
     descripcion: "Los tres canales de Meta a través de la bandeja de Zernio.",
     pasos: [
       {
-        texto: "Creá una API key en https://zernio.com/dashboard/api-keys, con permiso de lectura y escritura, y pegala acá.",
+        texto: "Crea una API key en https://zernio.com/dashboard/api-keys, con permiso de lectura y escritura, y pégala acá.",
         con: "api_key",
       },
-      { texto: "Tocá Generar para crear el secreto del webhook.", con: "webhook_secret" },
-      { texto: "Guardá.", con: "guardar" },
-      { texto: "Copiá esta URL con el botón: ya trae el secreto adentro.", con: "url" },
+      { texto: "Toca Generar para crear el secreto del webhook.", con: "webhook_secret" },
+      { texto: "Guarda.", con: "guardar" },
+      { texto: "Copia esta URL con el botón: ya trae el secreto adentro.", con: "url" },
       {
-        texto: "En https://zernio.com/dashboard andá a Settings → Webhooks, creá un webhook, pegá la URL y elegí el evento message.received. Necesita el addon de inbox habilitado.",
+        texto: "En https://zernio.com/dashboard ve a Settings → Webhooks, crea un webhook, pega la URL y elige el evento message.received. Necesita el addon de inbox habilitado.",
       },
     ],
     campos: [
@@ -308,7 +308,7 @@ export function leerFormulario(
       return { ok: false, error: `${campo.etiqueta}: tiene que empezar con http:// o https://.` };
     }
     if (campo.formato === "telefono" && !/^\+\d{8,15}$/.test(valor.replace(/[\s-]/g, ""))) {
-      return { ok: false, error: `${campo.etiqueta}: escribilo en formato internacional, por ejemplo +5491112345678.` };
+      return { ok: false, error: `${campo.etiqueta}: escríbelo en formato internacional, por ejemplo +5491112345678.` };
     }
 
     config[campo.clave] =

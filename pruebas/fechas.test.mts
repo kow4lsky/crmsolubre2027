@@ -87,7 +87,7 @@ test("el arranque del día es medianoche en esa zona", () => {
 });
 
 test("el arranque del día sigue el cambio de horario", () => {
-  // Santiago cambia de hora en septiembre, así que el mismo día calendario
+  // Santiago cambia de hora en setiembre, así que el mismo día calendario
   // arranca con desfasajes distintos según el mes.
   const invierno = startOfDayInZone("2026-08-18", "America/Santiago");
   const verano = startOfDayInZone("2026-12-18", "America/Santiago");

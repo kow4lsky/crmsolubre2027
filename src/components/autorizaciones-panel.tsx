@@ -87,7 +87,7 @@ export function AutorizacionesPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-neutral-600 dark:text-neutral-300">
           {esAdmin
-            ? "Los cambios de estado que el equipo no puede hacer solo. Aprobá o rechazá cada uno."
+            ? "Los cambios de estado que el equipo no puede hacer solo. Aprueba o rechaza cada uno."
             : "Tus pedidos de cambio de estado y en qué quedaron."}
         </p>
         <div className="flex gap-2">

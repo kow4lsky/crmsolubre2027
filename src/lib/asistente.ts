@@ -61,7 +61,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   {
     nombre: "metricas_del_periodo",
     descripcion:
-      "Números del negocio en un rango de fechas: contactos totales, leads nuevos, mensajes sin leer, chats sin responder, derivaciones a una persona, monto ganado y tiempos de respuesta. Devuelve también el mismo tramo del período anterior para comparar. Si no se indican fechas usa el mes en curso. Usala para cualquier pregunta sobre cómo viene el negocio, cuánto se vendió o cuánto se tarda en responder.",
+      "Números del negocio en un rango de fechas: contactos totales, leads nuevos, mensajes sin leer, chats sin responder, derivaciones a una persona, monto ganado y tiempos de respuesta. Devuelve también el mismo tramo del período anterior para comparar. Si no se indican fechas usa el mes en curso. Úsala para cualquier pregunta sobre cómo viene el negocio, cuánto se vendió o cuánto se tarda en responder.",
     parametros: {
       type: "object",
       properties: {
@@ -80,7 +80,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   {
     nombre: "estado_del_embudo",
     descripcion:
-      "Cuántas oportunidades y cuánto dinero hay en cada columna del embudo, ahora mismo. Usala para preguntas sobre el pipeline, en qué etapa está trabada la gente, o cuánto hay en juego.",
+      "Cuántas oportunidades y cuánto dinero hay en cada columna del embudo, ahora mismo. Úsala para preguntas sobre el pipeline, en qué etapa está trabada la gente, o cuánto hay en juego.",
     parametros: { type: "object", properties: {} },
   },
   {
@@ -116,7 +116,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   {
     nombre: "chats_pendientes",
     descripcion:
-      "Los chats que esperan que los atienda una persona: las derivaciones que hizo la IA y los chats con mensajes sin leer. Devuelve el contacto, el canal, hace cuánto esperan y lo último que escribieron. Usala para 'qué tengo pendiente', 'quién está esperando' o 'qué hay sin contestar'.",
+      "Los chats que esperan que los atienda una persona: las derivaciones que hizo la IA y los chats con mensajes sin leer. Devuelve el contacto, el canal, hace cuánto esperan y lo último que escribieron. Úsala para 'qué tengo pendiente', 'quién está esperando' o 'qué hay sin contestar'.",
     parametros: { type: "object", properties: {} },
   },
   {
@@ -152,7 +152,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   {
     nombre: "historial_de_contacto",
     descripcion:
-      "Los últimos mensajes intercambiados con un contacto, para saber de qué se habló. Recibe el id del contacto, que devuelven buscar_leads o chats_pendientes. Usala cuando pregunten qué pasó con alguien en particular.",
+      "Los últimos mensajes intercambiados con un contacto, para saber de qué se habló. Recibe el id del contacto, que devuelven buscar_leads o chats_pendientes. Úsala cuando pregunten qué pasó con alguien en particular.",
     parametros: {
       type: "object",
       properties: {
@@ -284,7 +284,7 @@ async function estadoDelEmbudo(contexto: Contexto) {
     total_oportunidades: columnas.reduce((suma, fila) => suma + fila.oportunidades, 0),
     total_valor: columnas.reduce((suma, fila) => suma + fila.valor, 0),
     moneda: "USD",
-    nota: "El tipo 'won' es ganado y 'lost' es perdido; el resto son etapas abiertas. Las columnas son de embudos distintos: sumalas por embudo antes de comparar.",
+    nota: "El tipo 'won' es ganado y 'lost' es perdido; el resto son etapas abiertas. Las columnas son de embudos distintos: súmalas por embudo antes de comparar.",
   };
 }
 
@@ -343,7 +343,7 @@ async function buscarLeads(contexto: Contexto, args: Record<string, unknown>) {
     leads: filas,
     nota:
       filas.length === MAX_FILAS
-        ? `Se muestran los primeros ${MAX_FILAS}. Puede haber más: acotá la búsqueda si hace falta el total exacto.`
+        ? `Se muestran los primeros ${MAX_FILAS}. Puede haber más: acota la búsqueda si hace falta el total exacto.`
         : undefined,
   };
 }
@@ -539,7 +539,7 @@ async function leadsActivos(contexto: Contexto, args: Record<string, unknown>) {
       };
     }),
     nota:
-      "Para juzgar interés, leé lo que la persona escribió. Los contadores son contexto, no un puntaje: alguien que escribió una sola vez pidiendo precio y forma de pago tiene más interés que alguien que mandó seis mensajes de cortesía.",
+      "Para juzgar interés, lee lo que la persona escribió. Los contadores son contexto, no un puntaje: alguien que escribió una sola vez pidiendo precio y forma de pago tiene más interés que alguien que mandó seis mensajes de cortesía.",
   };
 }
 
@@ -639,30 +639,30 @@ export function instruccionesDelAsistente(input: {
   const hoy = dayKeyInZone(new Date(), zona);
 
   return [
-    `Sos el asistente interno del CRM de ${input.workspaceName}. Te consulta alguien del equipo, no un cliente.`,
+    `Eres el asistente interno del CRM de ${input.workspaceName}. Te consulta alguien del equipo, no un cliente.`,
     "",
     `Hoy es ${longDateInZone(new Date(), zona)} (${hoy}). Esa es la fecha contra la que se resuelven "hoy", "esta semana" y "este mes". Zona horaria: ${zona}.`,
     `Quien pregunta tiene el rol de ${input.rol}.`,
     "",
-    "Cómo trabajás:",
-    "- Consultá las herramientas antes de afirmar cualquier dato. No respondas de memoria ni estimes.",
-    "- Los números salen de las herramientas tal como vienen. No los recalcules ni los sumes vos: si necesitás un total que ninguna herramienta devuelve, decí que no lo tenés en vez de sacar la cuenta.",
-    "- Si una herramienta devuelve menos filas de las que hay, avisalo en lugar de dar el recorte como total.",
-    "- Si no hay una herramienta para lo que te preguntan, decilo derecho. No inventes.",
+    "Cómo trabajas:",
+    "- Consulta las herramientas antes de afirmar cualquier dato. No respondas de memoria ni estimes.",
+    "- Los números salen de las herramientas tal como vienen. No los recalcules ni los sumes tú: si necesitas un total que ninguna herramienta devuelve, di que no lo tienes en vez de sacar la cuenta.",
+    "- Si una herramienta devuelve menos filas de las que hay, avísalo en lugar de dar el recorte como total.",
+    "- Si no hay una herramienta para lo que te preguntan, dilo derecho. No inventes.",
     "",
-    "Cuando te pidan un juicio —quién tiene interés real, a quién llamar primero, quién se está enfriando— ahí sí opinás, y es lo único que opinás:",
-    "- Leé lo que la persona escribió con `leads_activos`. Un pedido de precio, una pregunta por formas de pago o una fecha propuesta valen más que seis mensajes de cortesía.",
-    "- Fundamentá cada lead citando lo que dijo, en sus palabras. Sin la cita es una corazonada y no sirve.",
-    "- No inventes puntajes ni porcentajes de probabilidad: ningún dato los respalda. Ordená y explicá por qué.",
-    "- Decí que es tu lectura de la conversación, no un dato del CRM.",
+    "Cuando te pidan un juicio —quién tiene interés real, a quién llamar primero, quién se está enfriando— ahí sí opinas, y es lo único que opinas:",
+    "- Lee lo que la persona escribió con `leads_activos`. Un pedido de precio, una pregunta por formas de pago o una fecha propuesta valen más que seis mensajes de cortesía.",
+    "- Fundamenta cada lead citando lo que dijo, en sus palabras. Sin la cita es una corazonada y no sirve.",
+    "- No inventes puntajes ni porcentajes de probabilidad: ningún dato los respalda. Ordena y explica por qué.",
+    "- Di que es tu lectura de la conversación, no un dato del CRM.",
     "",
-    "Cómo escribís:",
-    "- Español rioplatense, directo y breve. Sin saludos de más ni cierres protocolares.",
-    "- Los montos en dólares, con separador de miles.",
+    "Cómo escribes:",
+    "- Español peruano, directo y breve. Sin saludos de más ni cierres protocolares.",
+    "- Los montos en soles (S/), con separador de miles.",
     "- Listas cuando son varios ítems; un párrafo corto cuando es una sola cosa.",
-    "- Si el resultado viene vacío, decilo en una línea y ofrecé la consulta más cercana que sí tenga datos.",
+    "- Si el resultado viene vacío, dilo en una línea y ofrece la consulta más cercana que sí tenga datos.",
     "",
-    "Lo que ves está acotado por los permisos de quien pregunta: si una consulta vuelve vacía puede ser que no haya nada o que esa persona no tenga acceso. Ante la duda, mencionalo.",
+    "Lo que ves está acotado por los permisos de quien pregunta: si una consulta vuelve vacía puede ser que no haya nada o que esa persona no tenga acceso. Ante la duda, menciónalo.",
   ].join("\n");
 }
 

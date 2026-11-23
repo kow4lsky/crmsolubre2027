@@ -28,8 +28,8 @@ export function UsuariosPanel({ onNotice }: { onNotice: (message: string) => voi
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="rounded-2xl bg-[#f9f8f3] p-4 text-sm text-neutral-600 dark:bg-white/5 dark:text-neutral-300">
         <p>
-          <b>Para sumar a alguien:</b> creale la cuenta en Supabase → Authentication → Users → Add user (con{" "}
-          <i>Auto Confirm User</i>). Cuando entre por primera vez aparece acá como <b>Asesor</b>; elegí su rol y su alias.
+          <b>Para sumar a alguien:</b> créale la cuenta en Supabase → Authentication → Users → Add user (con{" "}
+          <i>Auto Confirm User</i>). Cuando entre por primera vez aparece acá como <b>Asesor</b>; elige su rol y su alias.
         </p>
         <p className="mt-2">
           El <b>alias</b> es el nombre con el que figura en los pedidos (MILTON, NATHALY…). Con eso el CRM sabe cuáles son

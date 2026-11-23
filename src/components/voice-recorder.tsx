@@ -106,7 +106,7 @@ export function VoiceRecorder({
   const arrancar = async () => {
     const formato = elegirFormato();
     if (!formato) {
-      onNotice("Este navegador no puede grabar audio. Probá con Chrome.");
+      onNotice("Este navegador no puede grabar audio. Prueba con Chrome.");
       return;
     }
 
@@ -116,7 +116,7 @@ export function VoiceRecorder({
     } catch {
       // El navegador no distingue "dijo que no" de "no hay micrófono", así que
       // el aviso cubre los dos.
-      onNotice("No se pudo usar el micrófono. Revisá el permiso del navegador.");
+      onNotice("No se pudo usar el micrófono. Revisa el permiso del navegador.");
       return;
     }
 

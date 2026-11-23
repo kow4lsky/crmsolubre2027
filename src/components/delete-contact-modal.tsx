@@ -133,7 +133,7 @@ export function DeleteContactModal({
         )}
 
         <p className="mt-4 text-sm leading-6 text-neutral-500">
-          Si sólo querés {varios ? "sacarlos" : "sacarlo"} de la vista, {varios ? "archivalos" : "archivalo"}:
+          Si sólo quieres {varios ? "sacarlos" : "sacarlo"} de la vista, {varios ? "archívalos" : "archívalo"}:
           se {varios ? "ocultan" : "oculta"} pero {varios ? "conservan" : "conserva"} todo.
         </p>
 

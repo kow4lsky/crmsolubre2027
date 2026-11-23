@@ -376,7 +376,7 @@ async function resolveWorkspace(
     return null;
   }
   if (workspaces.length !== 1) {
-    console.error(`${log} hay varios workspaces: cargá el mapeo a mano en zernio_accounts`);
+    console.error(`${log} hay varios workspaces: carga el mapeo a mano en zernio_accounts`);
     return null;
   }
 

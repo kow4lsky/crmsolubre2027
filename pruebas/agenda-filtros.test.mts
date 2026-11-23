@@ -120,7 +120,7 @@ test("un rango escrito a mano se reconoce como el atajo que equivale", () => {
 /* ------------------------------------------------------------------- textos */
 
 test("el día se lee en castellano", () => {
-  assert.equal(textoDelDia("2026-09-03"), "jueves, 3 de septiembre");
+  assert.equal(textoDelDia("2026-09-03"), "jueves, 3 de setiembre");
   assert.equal(textoDelDia(""), "");
 });
 
@@ -128,16 +128,16 @@ test("el rango se cuenta relativo a hoy cuando corresponde", () => {
   assert.equal(textoDelRango({ desde: HOY, hasta: HOY }, HOY), "hoy, lunes, 31 de agosto");
   assert.equal(
     textoDelRango({ desde: "2026-09-01", hasta: null }, HOY),
-    "mañana, martes, 1 de septiembre",
+    "mañana, martes, 1 de setiembre",
   );
   assert.equal(
     textoDelRango({ desde: "2026-08-30", hasta: null }, HOY),
     "ayer, domingo, 30 de agosto",
   );
-  assert.equal(textoDelRango({ desde: "2026-09-03", hasta: null }, HOY), "el jueves, 3 de septiembre");
+  assert.equal(textoDelRango({ desde: "2026-09-03", hasta: null }, HOY), "el jueves, 3 de setiembre");
   assert.equal(
     textoDelRango({ desde: "2026-09-03", hasta: "2026-09-05" }, HOY),
-    "del jueves, 3 de septiembre al sábado, 5 de septiembre",
+    "del jueves, 3 de setiembre al sábado, 5 de setiembre",
   );
   assert.equal(textoDelRango(FILTRO_AGENDA_VACIO, HOY), "");
 });

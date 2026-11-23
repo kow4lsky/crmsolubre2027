@@ -97,7 +97,7 @@ function Lista({
         <EmptyState
           icon={FileText}
           title="Sin plantillas aprobadas"
-          description="Creá una en el panel de YCloud y esperá a que Meta la apruebe."
+          description="Crea una en el panel de YCloud y espera a que Meta la apruebe."
         />
       </div>
     );

@@ -812,7 +812,7 @@ function Overview({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold">Conversaciones recientes</h2>
-            <p className="mt-1 text-sm text-neutral-500">Respondé antes de que un lead se enfríe.</p>
+            <p className="mt-1 text-sm text-neutral-500">Responde antes de que un lead se enfríe.</p>
           </div>
           <button
             onClick={() => onNavigate("Conversaciones")}
@@ -912,7 +912,7 @@ function MisTareasCard({
         <p className="mt-5 text-sm text-neutral-500">
           {data.tareasError
             ? "Las tareas se activan cuando se corra su migración en Supabase."
-            : "Programá llamadas y seguimientos desde Tareas o desde la ficha de un lead."}
+            : "Programa llamadas y seguimientos desde Tareas o desde la ficha de un lead."}
         </p>
       )}
     </Card>
@@ -1322,7 +1322,7 @@ function ContactRowItem({
         </span>
       </button>
       <span className="hidden text-xs text-neutral-400 sm:block" suppressHydrationWarning>
-        {new Date(contact.createdAt).toLocaleDateString("es-AR")}
+        {new Date(contact.createdAt).toLocaleDateString("es-PE")}
       </span>
       <button
         disabled={pending}
@@ -1411,7 +1411,7 @@ function ContactsPanel({
           title="Todavía no hay contactos"
           description={
             access.can("crear_contactos")
-              ? "Creá el primero: se guarda en Supabase y entra al embudo como lead."
+              ? "Crea el primero: se guarda en Supabase y entra al embudo como lead."
               : "Todavía no te asignaron ningún lead."
           }
           action={
@@ -1497,7 +1497,7 @@ function ContactsPanel({
       {showArchived && (
         <p className="mt-4 rounded-xl bg-neutral-50 px-4 py-3 text-xs leading-5 text-neutral-500 dark:bg-white/[.04]">
           Los contactos archivados no se borran. Sus conversaciones, mensajes y oportunidades
-          siguen guardados y vuelven a aparecer si los restaurás.
+          siguen guardados y vuelven a aparecer si los restauras.
         </p>
       )}
 
@@ -1685,7 +1685,7 @@ function ContactModal({
             </div>
             <div>
               <label className="block text-sm font-medium" htmlFor="contact-value">
-                Valor (US$)
+                Valor (S/)
               </label>
               <input
                 id="contact-value"
