@@ -260,6 +260,7 @@ function Workspace({
 }) {
   const access = useAccess();
   useDatosEnVivo();
+  const esAsesora = context.rolVenta === "asesor" || context.rolVenta === "asesor_temp";
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = usePreference(SIDEBAR_COLLAPSED_KEY);
 
@@ -456,7 +457,8 @@ function Workspace({
             </button>
             {/* Vive en el encabezado y no flotando abajo a la derecha: ahí
                 tapaba el botón de enviar de la bandeja. */}
-            <AsistenteWidget />
+            {/* Las asesoras no usan el asistente (tampoco lo pueden llamar en el servidor). */}
+            {!esAsesora && <AsistenteWidget />}
             <NotificationsBell
               handoffs={data.handoffs}
               chatsSinLeer={data.chatsSinLeer}
@@ -465,7 +467,7 @@ function Workspace({
               onOpenChat={abrirChat}
               onOpenTareas={() => selectView("Tareas")}
             />
-            <AccountMenu email={context.userEmail} />
+            <AccountMenu email={context.userEmail} puedeCambiarClave={!esAsesora} />
           </div>
         </header>
 
@@ -553,7 +555,7 @@ function Workspace({
   );
 }
 
-function AccountMenu({ email }: { email: string }) {
+function AccountMenu({ email, puedeCambiarClave }: { email: string; puedeCambiarClave: boolean }) {
   const [open, setOpen] = useState(false);
   const [cambiandoClave, setCambiandoClave] = useState(false);
   const [nuevaClave, setNuevaClave] = useState("");
@@ -619,7 +621,8 @@ function AccountMenu({ email }: { email: string }) {
           <div className="absolute right-0 z-20 mt-2 w-60 rounded-xl border border-[#ddd8c9] bg-[#f9f8f3] p-2 shadow-lg dark:border-white/10 dark:bg-[#1c1811]">
             <p className="truncate px-3 py-2 text-xs text-neutral-500">{email}</p>
 
-            {cambiandoClave ? (
+            {/* A las asesoras la contraseña se la cambia el administrador. */}
+            {!puedeCambiarClave ? null : cambiandoClave ? (
               <form onSubmit={guardarClave} className="px-3 py-2">
                 <label className="sr-only" htmlFor="mi-clave-nueva">
                   Contraseña nueva
