@@ -81,7 +81,7 @@ contesta.
 2. Ponele nombre a tu workspace. Listo: ya estás adentro.
 3. Para sumar a alguien de tu equipo, creale la cuenta igual que la tuya
    (Supabase → Authentication → Users). La primera vez que entra queda como
-   administradora.
+   **asesor**; en el CRM, **Usuarios**, le elegís el rol y el alias.
 
 ## Paso 6 · Conexiones (OpenAI, YCloud y Zernio)
 
@@ -151,8 +151,8 @@ esta lista. Tildá cada punto recién cuando lo hayas comprobado.
 - [ ] **Nadie se puede registrar solo.** En Supabase → **Authentication → Sign In
   / Providers**, *Allow new users to sign up* tiene que estar **apagado**.
 - [ ] **Sólo tienen cuenta las personas que vos elegiste.** En Supabase →
-  **Authentication → Users**, borrá las que no reconozcas. Acordate de que toda
-  cuenta entra como administradora y ve todo.
+  **Authentication → Users**, borrá las que no reconozcas. En el CRM,
+  **Usuarios**, revisá que cada persona tenga el rol que corresponde.
 - [ ] **Tus claves no están en ningún lado más.** La service_role de Supabase y
   las keys de OpenAI, YCloud y Zernio no se mandan por chat, mail ni WhatsApp.
   Si alguna se compartió, generá una nueva y reemplazala.

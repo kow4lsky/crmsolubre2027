@@ -58,6 +58,7 @@ import {
   uploadVoiceNote,
 } from "@/lib/supabase/storage";
 import { errorDeContrasena } from "@/lib/password";
+import { esRolVenta, type RolVenta } from "@/lib/pedidos";
 import { getWorkspaceContext } from "@/lib/workspace";
 import { esIntegracion, type Integracion } from "@/lib/integraciones";
 import {
@@ -3954,4 +3955,84 @@ export async function deleteIntegracion(input: { integracion: string }): Promise
     ok: true,
     warning: "Desconectada. Si hay variables de entorno para este proveedor en Vercel, se vuelven a usar esas.",
   };
+}
+
+/* ------------------------------------------------------- usuarios de venta */
+
+export type MiembroDeVenta = {
+  userId: string;
+  email: string;
+  rolVenta: RolVenta;
+  alias: string | null;
+  /** La cuenta principal: siempre administradora. */
+  principal: boolean;
+};
+
+/** El equipo con su rol de venta. Sólo para el administrador. */
+export async function cargarEquipoDeVenta(): Promise<
+  { ok: true; miembros: MiembroDeVenta[] } | { ok: false; error: string }
+> {
+  const scope = await requireAdmin();
+  if (!scope.ok) return { ok: false, error: scope.error };
+
+  const [{ data, error }, emails] = await Promise.all([
+    scope.supabase
+      .from("workspace_members")
+      .select("user_id, role, rol_venta, alias")
+      .eq("workspace_id", scope.workspaceId)
+      .order("created_at", { ascending: true }),
+    emailsById(),
+  ]);
+  if (error) {
+    return {
+      ok: false,
+      error: /rol_venta/.test(error.message)
+        ? "Falta correr el SQL de pedidos en Supabase."
+        : error.message,
+    };
+  }
+
+  return {
+    ok: true,
+    miembros: (data ?? []).map((row) => ({
+      userId: row.user_id,
+      email: emails.get(row.user_id) ?? "Usuario sin mail",
+      rolVenta:
+        row.role === "owner" || row.role === "admin"
+          ? "admin"
+          : esRolVenta(row.rol_venta)
+            ? row.rol_venta
+            : "asesor",
+      alias: row.alias ?? null,
+      principal: row.role === "owner",
+    })),
+  };
+}
+
+/** Cambia el rol de venta y el alias de alguien del equipo. */
+export async function guardarMiembroDeVenta(input: {
+  userId: string;
+  rolVenta: RolVenta;
+  alias: string;
+}): Promise<ActionResult> {
+  const scope = await requireAdmin();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!esRolVenta(input.rolVenta)) return { ok: false, error: "Elegí un rol." };
+
+  const alias = (input.alias ?? "").trim().toUpperCase();
+  if (alias.length > 30) return { ok: false, error: "El alias puede tener hasta 30 letras." };
+  if (input.rolVenta !== "admin" && !alias) {
+    return { ok: false, error: "Ponele un alias: es el nombre con el que figura en los pedidos." };
+  }
+
+  const { error } = await scope.supabase.rpc("guardar_miembro_de_venta", {
+    ws: scope.workspaceId,
+    usuario: input.userId,
+    nuevo_rol: input.rolVenta,
+    nuevo_alias: alias,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  return { ok: true };
 }
