@@ -8,6 +8,7 @@ import {
   type PermissionMap,
 } from "@/lib/permissions";
 import { esRolVenta, type RolVenta } from "@/lib/pedidos";
+import { seccionesDe, type SeccionAsignable } from "@/lib/secciones";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
@@ -38,6 +39,8 @@ export type WorkspaceContext =
       rolVenta: RolVenta;
       /** Nombre con el que figura en los pedidos (MILTON, NATHALY...). */
       alias: string | null;
+      /** Las secciones del menú que puede ver. El admin, todas. */
+      secciones: SeccionAsignable[];
     };
 
 type WorkspaceUnico =
@@ -211,19 +214,24 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
 
   // El rol de venta se pide aparte: si la migración de pedidos todavía no se
   // corrió, la columna no existe y no puede tirar abajo el ingreso.
-  const venta = await supabase
-    .from("workspace_members")
-    .select("rol_venta, alias")
-    .eq("workspace_id", data.workspace_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Primero con `secciones`; si esa columna todavía no existe, sin ella.
+  const leerVenta = (columnas: string) =>
+    supabase
+      .from("workspace_members")
+      .select(columnas)
+      .eq("workspace_id", data.workspace_id)
+      .eq("user_id", user.id)
+      .maybeSingle<{ rol_venta?: string; alias?: string | null; secciones?: string[] | null }>();
+  let venta = await leerVenta("rol_venta, alias, secciones");
+  if (venta.error) venta = await leerVenta("rol_venta, alias");
   const rolGuardado = venta.error ? null : venta.data?.rol_venta;
   const rolVenta: RolVenta = isAdminRole(role)
     ? "admin"
     : esRolVenta(rolGuardado)
       ? rolGuardado
       : "asesor";
-  const alias = venta.error ? null : ((venta.data?.alias as string | null) ?? null);
+  const alias = venta.error ? null : (venta.data?.alias ?? null);
+  const secciones = seccionesDe(venta.error ? null : venta.data?.secciones, rolVenta);
 
   return {
     status: "ready",
@@ -237,5 +245,6 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
     isAdmin: isAdminRole(role),
     rolVenta,
     alias,
+    secciones,
   };
 }

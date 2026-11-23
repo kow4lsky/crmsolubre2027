@@ -161,3 +161,13 @@ test("un pedido CONFIRMADO necesita inventario, envío y courier", async () => {
   assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "SWAYP", envio: "Express", courier: "Swayp" }), null);
   assert.equal(faltaParaEstado({ estado: "VOLVER A LLAMAR", inventario: "", envio: "", courier: "" }), null);
 });
+
+test("las secciones de cada persona", async () => {
+  const { seccionesDe, seccionesPorDefecto } = await import("../src/lib/secciones.ts");
+  assert.deepEqual(seccionesPorDefecto("asesor"), ["Pedidos", "Autorizaciones", "Tareas"]);
+  assert.equal(seccionesPorDefecto("admin").length, 9);
+  assert.deepEqual(seccionesDe(null, "encargado"), ["Pedidos", "Autorizaciones", "Tareas"]);
+  // Lo que no es una sección asignable se descarta (Configuración es sólo del admin).
+  assert.deepEqual(seccionesDe(["Pedidos", "Configuración", 3, "Agenda"], "asesor"), ["Pedidos", "Agenda"]);
+  assert.deepEqual(seccionesDe([], "asesor"), []);
+});

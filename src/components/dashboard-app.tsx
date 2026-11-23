@@ -30,7 +30,6 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
-  UserCog,
   UsersRound,
   X,
 } from "lucide-react";
@@ -96,7 +95,6 @@ import type { WorkspaceContext } from "@/lib/workspace";
 type View =
   | "Pedidos"
   | "Autorizaciones"
-  | "Usuarios"
   | "Resumen"
   | "Conversaciones"
   | "Pipeline"
@@ -121,7 +119,6 @@ type View =
 const VIEW_SLUGS: Record<View, string> = {
   Pedidos: "pedidos",
   Autorizaciones: "autorizaciones",
-  Usuarios: "usuarios",
   Resumen: "resumen",
   Conversaciones: "conversaciones",
   Pipeline: "pipeline",
@@ -153,7 +150,6 @@ const NAVIGATION: {
 }[] = [
   { label: "Pedidos", icon: Package },
   { label: "Autorizaciones", icon: ShieldCheck },
-  { label: "Usuarios", icon: UserCog, adminOnly: true },
   { label: "Resumen", icon: LayoutDashboard },
   { label: "Conversaciones", icon: MessageSquareMore },
   { label: "Pipeline", icon: LineChart },
@@ -277,12 +273,19 @@ function Workspace({
   const allowed = (label: View) => {
     const entry = NAVIGATION.find((item) => item.label === label);
     if (!entry) return false;
-    return (!entry.adminOnly || access.isAdmin) && (!entry.permission || access.can(entry.permission));
+    if (context.rolVenta === "admin" || access.isAdmin) return true;
+    if (entry.adminOnly) return false;
+    // Lo que el administrador le habilitó en Configuración → Usuarios. Si una
+    // sección pide un permiso, se lo dio al habilitarla.
+    if (!(context.secciones as string[]).includes(label)) return false;
+    return !entry.permission || access.can(entry.permission);
   };
 
   const [view, setView] = useState<View>(() => {
     const wanted = viewFromSlug(vista);
-    return allowed(wanted) ? wanted : "Pedidos";
+    if (allowed(wanted)) return wanted;
+    // La primera sección que tenga habilitada, en el orden del menú.
+    return NAVIGATION.find((item) => allowed(item.label))?.label ?? "Pedidos";
   });
   const [showContactForm, setShowContactForm] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -491,8 +494,6 @@ function Workspace({
               rolVenta={context.rolVenta}
               onNotice={notify}
             />
-          ) : view === "Usuarios" ? (
-            <UsuariosPanel onNotice={notify} />
           ) : view === "Resumen" ? (
             <Overview data={data} onNavigate={selectView} onOpenLead={setOpenLead} />
           ) : (
@@ -1255,7 +1256,12 @@ function ModuleView({
           <AgentsPanel pipelines={data.pipelines} stages={data.stages} onNotice={onNotice} />
         )}
         {view === "Base de datos" && <BaseDeDatosPanel stages={data.stages} />}
-        {view === "Configuración" && <SettingsPanel timezone={data.timezone} />}
+        {view === "Configuración" && (
+          <div className="space-y-8">
+            <UsuariosPanel onNotice={onNotice} />
+            <SettingsPanel timezone={data.timezone} />
+          </div>
+        )}
       </div>
     </>
   );
