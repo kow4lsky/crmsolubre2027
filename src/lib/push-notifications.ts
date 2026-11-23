@@ -329,3 +329,13 @@ function detalleDelError(error: unknown): string {
   if (status) return `${status} — ${cuerpo || mensaje || "sin detalle"}`.slice(0, 300);
   return (mensaje || "Fallo desconocido al enviar.").slice(0, 300);
 }
+
+/** Un par de llaves nuevo para los avisos push, para cargar en Vercel. */
+export function generarLlavesVapid(): { publicKey: string; privateKey: string } {
+  return webpush.generateVAPIDKeys();
+}
+
+/** Si el servidor tiene las tres variables de los avisos push. */
+export function avisosPushConfigurados(): boolean {
+  return vapidConfig() !== null;
+}

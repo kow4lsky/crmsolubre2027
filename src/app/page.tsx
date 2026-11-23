@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ auth_error?: string; vista?: string; chat?: string }>;
+  searchParams: Promise<{ auth_error?: string; vista?: string; chat?: string; pedido?: string }>;
 }) {
   const [context, params] = await Promise.all([getWorkspaceContext(), searchParams]);
 
@@ -27,6 +27,7 @@ export default async function Home({
       authError={params.auth_error ?? null}
       vista={params.vista ?? null}
       chat={params.chat ?? null}
+      pedido={params.pedido ?? null}
     />
   );
 }

@@ -399,7 +399,7 @@ function TextoDelPaso({ texto }: { texto: string }) {
   );
 }
 
-function Copiable({ texto }: { texto: string }) {
+export function Copiable({ texto }: { texto: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
     <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[#ddd8c9] bg-[#f9f8f3] px-3 py-2 dark:border-white/10 dark:bg-white/5">

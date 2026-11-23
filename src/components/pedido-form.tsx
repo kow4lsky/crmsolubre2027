@@ -10,6 +10,7 @@ import {
   CANTIDADES_RAPIDAS,
   ESTADOS,
   ESTADOS_CON_ENTREGA_OBLIGATORIA,
+  ESTADOS_CON_LLAMADA_OBLIGATORIA,
   OPCIONES,
   OTRA_CANTIDAD,
   aLocalDeLima,
@@ -150,6 +151,7 @@ export function PedidoForm({
     setCampos((c) => ({ ...c, ...ajustarEntrega({ inventario: c.inventario, envio: c.envio, courier: c.courier, ...cambio }) }));
   const opcionesDeCourier = courierPara(campos.inventario, campos.envio);
   const entregaObligatoria = (ESTADOS_CON_ENTREGA_OBLIGATORIA as string[]).includes(campos.estado);
+  const llamadaObligatoria = (ESTADOS_CON_LLAMADA_OBLIGATORIA as string[]).includes(campos.estado);
 
   const itemsElegidos = juntarLineas(lineas);
   // Sin productos cargados, un pedido viejo conserva el texto que traía.
@@ -200,6 +202,7 @@ export function PedidoForm({
       inventario: campos.inventario,
       envio: campos.envio,
       courier: courierFinal,
+      proxLlamada: campos.prox_llamada,
     });
     if (falta) return setError(falta);
 
@@ -488,7 +491,7 @@ export function PedidoForm({
           <Campo etiqueta="Costo de envío (S/)">
             <input inputMode="decimal" value={campos.costo_envio} onChange={(e) => cambiar("costo_envio", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Próxima llamada (hora de Perú)">
+          <Campo etiqueta={`Próxima llamada (hora de Perú)${llamadaObligatoria ? " *" : ""}`}>
             <input
               type="datetime-local"
               value={campos.prox_llamada}

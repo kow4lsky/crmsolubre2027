@@ -402,7 +402,10 @@ export function errorDeEntrega(datos: { inventario: string; envio: string; couri
 /** Los estados en los que celular, destino, inventario, envío y courier son obligatorios. */
 export const ESTADOS_CON_ENTREGA_OBLIGATORIA: Estado[] = ["CONFIRMADO"];
 
-/** Qué dato de entrega falta para poder guardar en ese estado, o null. */
+/** Los estados que exigen programar la próxima llamada (fecha y hora). */
+export const ESTADOS_CON_LLAMADA_OBLIGATORIA: Estado[] = ["VOLVER A LLAMAR", "COORDINACIÓN"];
+
+/** Qué dato falta para poder guardar en ese estado, o null. */
 export function faltaParaEstado(datos: {
   estado: string;
   celular: string;
@@ -410,7 +413,14 @@ export function faltaParaEstado(datos: {
   inventario: string;
   envio: string;
   courier: string;
+  /** Fecha y hora de la próxima llamada, como la da el campo ("2026-11-25T16:00"). */
+  proxLlamada?: string;
 }): string | null {
+  if ((ESTADOS_CON_LLAMADA_OBLIGATORIA as string[]).includes(datos.estado)) {
+    return momentoDeLima(datos.proxLlamada ?? "")
+      ? null
+      : `Para dejarlo ${datos.estado} programa la próxima llamada (fecha y hora).`;
+  }
   if (!(ESTADOS_CON_ENTREGA_OBLIGATORIA as string[]).includes(datos.estado)) return null;
   const faltan = [
     !datos.celular.trim() && "Celular",
