@@ -153,3 +153,11 @@ test("inventario, envío y courier van de la mano", async () => {
   assert.equal(errorDeEntrega({ inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "Swayp" })?.startsWith("El courier"), true);
   assert.equal(errorDeEntrega({ inventario: "", envio: "Express", courier: "x" }), null);
 });
+
+test("un pedido CONFIRMADO necesita inventario, envío y courier", async () => {
+  const { faltaParaEstado } = await import("../src/lib/pedidos.ts");
+  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "", envio: "", courier: "" }), "Para dejarlo CONFIRMADO completa: Inventario, Envío, Courier.");
+  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "" }), "Para dejarlo CONFIRMADO completa: Courier.");
+  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "SWAYP", envio: "Express", courier: "Swayp" }), null);
+  assert.equal(faltaParaEstado({ estado: "VOLVER A LLAMAR", inventario: "", envio: "", courier: "" }), null);
+});

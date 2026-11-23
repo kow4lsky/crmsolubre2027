@@ -9,6 +9,7 @@ import { dayKeyInZone } from "@/lib/fechas";
 import {
   CANTIDADES_RAPIDAS,
   ESTADOS,
+  ESTADOS_CON_ENTREGA_OBLIGATORIA,
   OPCIONES,
   OTRA_CANTIDAD,
   ajustarEntrega,
@@ -16,6 +17,7 @@ import {
   courierPara,
   enviosPara,
   errorDeEntrega,
+  faltaParaEstado,
   juntarLineas,
   lineasDe,
   resumenDeProductos,
@@ -140,6 +142,7 @@ export function PedidoForm({
   const cambiarEntrega = (cambio: { inventario?: string; envio?: string }) =>
     setCampos((c) => ({ ...c, ...ajustarEntrega({ inventario: c.inventario, envio: c.envio, courier: c.courier, ...cambio }) }));
   const opcionesDeCourier = courierPara(campos.inventario, campos.envio);
+  const entregaObligatoria = (ESTADOS_CON_ENTREGA_OBLIGATORIA as string[]).includes(campos.estado);
 
   const itemsElegidos = juntarLineas(lineas);
   // Sin productos cargados, un pedido viejo conserva el texto que traía.
@@ -181,6 +184,10 @@ export function PedidoForm({
     const courierFinal = opcionesDeCourier.fijo ?? campos.courier;
     const malEntrega = errorDeEntrega({ inventario: campos.inventario, envio: campos.envio, courier: courierFinal });
     if (malEntrega) return setError(malEntrega);
+    // Se mira el estado que se pide, aunque necesite autorización: al aprobarse
+    // tiene que llegar completo.
+    const falta = faltaParaEstado({ estado: campos.estado, inventario: campos.inventario, envio: campos.envio, courier: courierFinal });
+    if (falta) return setError(falta);
 
     const datos: Record<string, unknown> = {
       fecha_registro: campos.fecha_registro || dayKeyInZone(new Date(), timezone),
@@ -428,17 +435,17 @@ export function PedidoForm({
           <Campo etiqueta="Canal">
             <Lista valor={campos.canal} opciones={OPCIONES.canal} onCambio={(v) => cambiar("canal", v)} />
           </Campo>
-          <Campo etiqueta="Inventario">
+          <Campo etiqueta={`Inventario${entregaObligatoria ? " *" : ""}`}>
             <Lista valor={campos.inventario} opciones={OPCIONES.inventario} onCambio={(v) => cambiarEntrega({ inventario: v })} />
           </Campo>
-          <Campo etiqueta="Envío">
+          <Campo etiqueta={`Envío${entregaObligatoria ? " *" : ""}`}>
             {campos.inventario ? (
               <Lista valor={campos.envio} opciones={enviosPara(campos.inventario)} onCambio={(v) => cambiarEntrega({ envio: v })} />
             ) : (
               <input disabled value="" placeholder="Elige primero el inventario" className={INPUT_CLASS} />
             )}
           </Campo>
-          <Campo etiqueta="Courier">
+          <Campo etiqueta={`Courier${entregaObligatoria ? " *" : ""}`}>
             {opcionesDeCourier.fijo ? (
               // Sale solo y no se cambia: Swayp con SWAYP, Solubre con Indriver.
               <input disabled value={opcionesDeCourier.fijo} className={`${INPUT_CLASS} font-semibold`} />
