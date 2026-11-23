@@ -156,10 +156,20 @@ test("inventario, envío y courier van de la mano", async () => {
 
 test("un pedido CONFIRMADO necesita inventario, envío y courier", async () => {
   const { faltaParaEstado } = await import("../src/lib/pedidos.ts");
-  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "", envio: "", courier: "" }), "Para dejarlo CONFIRMADO completa: Inventario, Envío, Courier.");
-  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "" }), "Para dejarlo CONFIRMADO completa: Courier.");
-  assert.equal(faltaParaEstado({ estado: "CONFIRMADO", inventario: "SWAYP", envio: "Express", courier: "Swayp" }), null);
-  assert.equal(faltaParaEstado({ estado: "VOLVER A LLAMAR", inventario: "", envio: "", courier: "" }), null);
+  const vacio = { celular: "", destino: "", inventario: "", envio: "", courier: "" };
+  assert.equal(
+    faltaParaEstado({ estado: "CONFIRMADO", ...vacio }),
+    "Para dejarlo CONFIRMADO completa: Celular, Destino, Inventario, Envío, Courier.",
+  );
+  assert.equal(
+    faltaParaEstado({ estado: "CONFIRMADO", celular: "987654321", destino: "Provincia", inventario: "SOLUBRE", envio: "Prov.Agencia", courier: "" }),
+    "Para dejarlo CONFIRMADO completa: Courier.",
+  );
+  assert.equal(
+    faltaParaEstado({ estado: "CONFIRMADO", celular: "987654321", destino: "Lima", inventario: "SWAYP", envio: "Express", courier: "Swayp" }),
+    null,
+  );
+  assert.equal(faltaParaEstado({ estado: "VOLVER A LLAMAR", ...vacio }), null);
 });
 
 test("las secciones de cada persona", async () => {
