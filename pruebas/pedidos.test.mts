@@ -169,7 +169,7 @@ test("un pedido CONFIRMADO necesita inventario, envío y courier", async () => {
     faltaParaEstado({ estado: "CONFIRMADO", celular: "987654321", destino: "Lima", inventario: "SWAYP", envio: "Express", courier: "Swayp" }),
     null,
   );
-  assert.equal(faltaParaEstado({ estado: "VOLVER A LLAMAR", ...vacio }), null);
+  assert.equal(faltaParaEstado({ estado: "NC", ...vacio }), null);
 });
 
 test("las secciones de cada persona", async () => {
@@ -191,4 +191,19 @@ test("la próxima llamada se guarda y se muestra en hora de Lima", async () => {
   assert.equal(aLocalDeLima("2026-11-25T02:10:00Z"), "2026-11-24T21:10");
   assert.equal(fechaYHoraDeLima("2026-11-24T20:30:00Z"), "24/11/2026 15:30");
   assert.equal(aLocalDeLima(null), "");
+});
+
+test("VOLVER A LLAMAR y COORDINACIÓN exigen programar la próxima llamada", async () => {
+  const { faltaParaEstado } = await import("../src/lib/pedidos.ts");
+  const vacio = { celular: "", destino: "", inventario: "", envio: "", courier: "" };
+  assert.equal(
+    faltaParaEstado({ estado: "VOLVER A LLAMAR", ...vacio, proxLlamada: "" }),
+    "Para dejarlo VOLVER A LLAMAR programa la próxima llamada (fecha y hora).",
+  );
+  assert.equal(
+    faltaParaEstado({ estado: "COORDINACIÓN", ...vacio, proxLlamada: "2026-11-25" }),
+    "Para dejarlo COORDINACIÓN programa la próxima llamada (fecha y hora).",
+  );
+  assert.equal(faltaParaEstado({ estado: "COORDINACIÓN", ...vacio, proxLlamada: "2026-11-25T16:00" }), null);
+  assert.equal(faltaParaEstado({ estado: "RECHAZADO", ...vacio }), null);
 });
