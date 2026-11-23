@@ -181,3 +181,14 @@ test("las secciones de cada persona", async () => {
   assert.deepEqual(seccionesDe(["Pedidos", "Configuración", 3, "Agenda"], "asesor"), ["Pedidos", "Agenda"]);
   assert.deepEqual(seccionesDe([], "asesor"), []);
 });
+
+test("la próxima llamada se guarda y se muestra en hora de Lima", async () => {
+  const { momentoDeLima, aLocalDeLima, fechaYHoraDeLima } = await import("../src/lib/pedidos.ts");
+  assert.equal(momentoDeLima("2026-11-24T15:30"), "2026-11-24T15:30:00-05:00");
+  assert.equal(momentoDeLima(""), null);
+  // Lo que guarda la base (en UTC) vuelve a ser las 15:30 de Lima, sin importar la hora de la compu.
+  assert.equal(aLocalDeLima("2026-11-24T20:30:00+00:00"), "2026-11-24T15:30");
+  assert.equal(aLocalDeLima("2026-11-25T02:10:00Z"), "2026-11-24T21:10");
+  assert.equal(fechaYHoraDeLima("2026-11-24T20:30:00Z"), "24/11/2026 15:30");
+  assert.equal(aLocalDeLima(null), "");
+});

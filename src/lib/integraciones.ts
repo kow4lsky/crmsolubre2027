@@ -187,7 +187,7 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
     integracion: "shopify",
     nombre: "Shopify (tienda y landing)",
     descripcion:
-      "Cada pedido nuevo de Shopify entra solo a Pedidos: los de la tienda como SHOPIFY TIENDA y los del formulario de EasySell como SHOPIFY LANDING.",
+      "Cada pedido nuevo de Shopify, de la tienda o del formulario de EasySell, entra solo a Pedidos con el canal SHOPIFY.",
     pasos: [
       { texto: "Copia esta URL con el botón.", con: "url" },
       {

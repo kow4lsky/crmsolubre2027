@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCopy,
@@ -20,6 +21,7 @@ import { BOTON_SECUNDARIO, EstadoChip, descargar } from "@/components/pedidos-ui
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import {
   COLUMNAS_PEDIDO,
+  COLUMNAS_PEDIDO_BASE,
   DESPACHO_LIMA_COLUMNAS,
   DESPACHO_PROVINCIA_COLUMNAS,
   ESTADOS,
@@ -51,12 +53,13 @@ type Filtros = {
   texto: string;
   desde: string;
   hasta: string;
-  estado: string;
-  asesor: string;
-  destino: string;
-  canal: string;
-  envio: string;
-  courier: string;
+  // Cada filtro de lista admite varias opciones a la vez. Vacío = todos.
+  estado: string[];
+  asesor: string[];
+  destino: string[];
+  canal: string[];
+  envio: string[];
+  courier: string[];
   verDepurados: boolean;
 };
 
@@ -64,12 +67,12 @@ const FILTROS_VACIOS: Filtros = {
   texto: "",
   desde: "",
   hasta: "",
-  estado: "",
-  asesor: "",
-  destino: "",
-  canal: "",
-  envio: "",
-  courier: "",
+  estado: [],
+  asesor: [],
+  destino: [],
+  canal: [],
+  envio: [],
+  courier: [],
   verDepurados: false,
 };
 
@@ -80,11 +83,14 @@ export function PedidosPanel({
   timezone,
   rolVenta,
   onNotice,
+  abrir = null,
 }: {
   workspaceId: string;
   timezone: string;
   rolVenta: RolVenta;
   onNotice: (message: string) => void;
+  /** Un pedido para abrir apenas se pueda (desde el aviso de llamada). */
+  abrir?: { codigo: string; vez: number } | null;
 }) {
   const supabase = getSupabaseBrowser();
   const esAdmin = rolVenta === "admin";
@@ -124,6 +130,22 @@ export function PedidosPanel({
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
+  // Abrir el pedido que pidió el aviso de llamada.
+  useEffect(() => {
+    if (!abrir) return;
+    let vigente = true;
+    void (async () => {
+      let respuesta = await supabase.from("pedidos").select(COLUMNAS_PEDIDO).eq("workspace_id", workspaceId).eq("codigo", abrir.codigo).maybeSingle();
+      if (respuesta.error) {
+        respuesta = await supabase.from("pedidos").select(COLUMNAS_PEDIDO_BASE).eq("workspace_id", workspaceId).eq("codigo", abrir.codigo).maybeSingle();
+      }
+      if (vigente && respuesta.data) setAbierto(respuesta.data as unknown as Pedido);
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [abrir, supabase, workspaceId]);
+
   useEffect(() => {
     let vigente = true;
     const cargar = async () => {
@@ -134,21 +156,21 @@ export function PedidosPanel({
 
       // Se arma de cero en cada intento: el constructor de la consulta acumula
       // los órdenes, y reusarlo dejaría el orden que falló en el segundo pedido.
-      const ordenada = (porNumero: boolean) => {
+      const ordenada = (porNumero: boolean, columnas: string) => {
         let consulta = supabase
           .from("pedidos")
-          .select(COLUMNAS_PEDIDO, { count: "exact" })
+          .select(columnas, { count: "exact" })
           .eq("workspace_id", workspaceId);
         if (termino) consulta = consulta.ilike("busqueda", `%${termino}%`);
         if (filtros.desde) consulta = consulta.gte("fecha_registro", filtros.desde);
         if (filtros.hasta) consulta = consulta.lte("fecha_registro", filtros.hasta);
-        if (filtros.estado) consulta = consulta.eq("estado", filtros.estado);
+        if (filtros.estado.length) consulta = consulta.in("estado", filtros.estado);
         else if (!filtros.verDepurados && !termino) consulta = consulta.neq("estado", "DEPURADO");
-        if (filtros.asesor) consulta = consulta.eq("asesor", filtros.asesor);
-        if (filtros.destino) consulta = consulta.eq("destino", filtros.destino);
-        if (filtros.canal) consulta = consulta.eq("canal", filtros.canal);
-        if (filtros.envio) consulta = consulta.eq("envio", filtros.envio);
-        if (filtros.courier) consulta = consulta.eq("courier", filtros.courier);
+        if (filtros.asesor.length) consulta = consulta.in("asesor", filtros.asesor);
+        if (filtros.destino.length) consulta = consulta.in("destino", filtros.destino);
+        if (filtros.canal.length) consulta = consulta.in("canal", filtros.canal);
+        if (filtros.envio.length) consulta = consulta.in("envio", filtros.envio);
+        if (filtros.courier.length) consulta = consulta.in("courier", filtros.courier);
 
         // El último código creado, arriba (WED7654, WED7653...). Si todavía no
         // se corrió el SQL que agrega `codigo_num`, se ordena por fecha.
@@ -157,8 +179,14 @@ export function PedidosPanel({
           : consulta.order("fecha_registro", { ascending: false }).order("codigo", { ascending: false });
         return conOrden.range(desde, desde + PEDIDOS_POR_PAGINA - 1);
       };
-      let respuesta = await ordenada(true);
-      if (respuesta.error && /codigo_num/.test(respuesta.error.message)) respuesta = await ordenada(false);
+      // Si falta correr algún SQL reciente, se pide lo que sí existe.
+      let respuesta = await ordenada(true, COLUMNAS_PEDIDO);
+      if (respuesta.error && /prox_llamada_at/.test(respuesta.error.message)) {
+        respuesta = await ordenada(true, COLUMNAS_PEDIDO_BASE);
+      }
+      if (respuesta.error && /codigo_num/.test(respuesta.error.message)) {
+        respuesta = await ordenada(false, COLUMNAS_PEDIDO_BASE);
+      }
       const { data, count, error: falla } = respuesta;
 
       if (!vigente) return;
@@ -225,7 +253,9 @@ export function PedidosPanel({
 
   const hayFiltros =
     texto ||
-    Object.entries(filtros).some(([clave, valor]) => clave !== "texto" && valor !== FILTROS_VACIOS[clave as keyof Filtros]);
+    Object.entries(filtros).some(([clave, valor]) =>
+      clave === "texto" ? false : Array.isArray(valor) ? valor.length > 0 : valor !== FILTROS_VACIOS[clave as keyof Filtros],
+    );
 
   return (
     <div className="space-y-4">
@@ -266,12 +296,12 @@ export function PedidosPanel({
           Hasta
           <input type="date" value={filtros.hasta} onChange={(e) => cambiarFiltro("hasta", e.target.value)} className={SELECT_CLASS} />
         </label>
-        <Filtro etiqueta="Estado" valor={filtros.estado} opciones={[...ESTADOS]} onCambio={(v) => cambiarFiltro("estado", v)} />
-        <Filtro etiqueta="Asesor" valor={filtros.asesor} opciones={[...OPCIONES.asesor]} onCambio={(v) => cambiarFiltro("asesor", v)} />
-        <Filtro etiqueta="Destino" valor={filtros.destino} opciones={[...OPCIONES.destino]} onCambio={(v) => cambiarFiltro("destino", v)} />
-        <Filtro etiqueta="Canal" valor={filtros.canal} opciones={[...OPCIONES.canal]} onCambio={(v) => cambiarFiltro("canal", v)} />
-        <Filtro etiqueta="Envío" valor={filtros.envio} opciones={[...OPCIONES.envio]} onCambio={(v) => cambiarFiltro("envio", v)} />
-        <Filtro etiqueta="Courier" valor={filtros.courier} opciones={[...OPCIONES.courier]} onCambio={(v) => cambiarFiltro("courier", v)} />
+        <Filtro etiqueta="Estado" valores={filtros.estado} opciones={[...ESTADOS]} onCambio={(v) => cambiarFiltro("estado", v)} />
+        <Filtro etiqueta="Asesor" valores={filtros.asesor} opciones={[...OPCIONES.asesor]} onCambio={(v) => cambiarFiltro("asesor", v)} />
+        <Filtro etiqueta="Destino" valores={filtros.destino} opciones={[...OPCIONES.destino]} onCambio={(v) => cambiarFiltro("destino", v)} />
+        <Filtro etiqueta="Canal" valores={filtros.canal} opciones={[...OPCIONES.canal]} onCambio={(v) => cambiarFiltro("canal", v)} />
+        <Filtro etiqueta="Envío" valores={filtros.envio} opciones={[...OPCIONES.envio]} onCambio={(v) => cambiarFiltro("envio", v)} />
+        <Filtro etiqueta="Courier" valores={filtros.courier} opciones={[...OPCIONES.courier]} onCambio={(v) => cambiarFiltro("courier", v)} />
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-300">
           <input
             type="checkbox"
@@ -417,7 +447,7 @@ export function PedidosPanel({
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-600 dark:text-neutral-300">
         <span>
           {cargando ? "Cargando…" : `${total.toLocaleString("es-PE")} pedido(s)`}
-          {!filtros.verDepurados && !filtros.estado && !terminoDeBusqueda(filtros.texto) && " · sin depurados"}
+          {!filtros.verDepurados && !filtros.estado.length && !terminoDeBusqueda(filtros.texto) && " · sin depurados"}
         </span>
         <div className="flex items-center gap-2">
           <button type="button" disabled={pagina === 0 || cargando} onClick={() => setPagina((n) => n - 1)} className={BOTON_SECUNDARIO}>
@@ -506,26 +536,68 @@ export function PedidosPanel({
   );
 }
 
+/**
+ * Un filtro de lista con varias opciones a la vez: un botón que abre casillas.
+ * Sin ninguna marcada, no filtra.
+ */
 function Filtro({
   etiqueta,
-  valor,
+  valores,
   opciones,
   onCambio,
 }: {
   etiqueta: string;
-  valor: string;
+  valores: string[];
   opciones: string[];
-  onCambio: (valor: string) => void;
+  onCambio: (valores: string[]) => void;
 }) {
+  const [abierto, setAbierto] = useState(false);
+  const resumen =
+    valores.length === 0 ? "todos" : valores.length === 1 ? valores[0] : `${valores.length} elegidos`;
+  const alternar = (opcion: string) =>
+    onCambio(valores.includes(opcion) ? valores.filter((v) => v !== opcion) : [...valores, opcion]);
+
   return (
-    <select aria-label={etiqueta} value={valor} onChange={(e) => onCambio(e.target.value)} className={SELECT_CLASS}>
-      <option value="">{etiqueta}: todos</option>
-      {opciones.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+    <div className="relative">
+      <button
+        type="button"
+        aria-expanded={abierto}
+        onClick={() => setAbierto(!abierto)}
+        className={`${SELECT_CLASS} inline-flex cursor-pointer items-center gap-1.5 ${
+          valores.length ? "border-amber-400 bg-amber-50 font-semibold dark:bg-amber-400/10" : ""
+        }`}
+      >
+        {etiqueta}: {resumen}
+        <ChevronDown className="size-4 text-neutral-400" />
+      </button>
+      {abierto && (
+        <>
+          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-20 cursor-default" onClick={() => setAbierto(false)} />
+          <div className="absolute left-0 z-30 mt-1 max-h-80 w-60 overflow-auto rounded-xl border border-[#ddd8c9] bg-white p-2 shadow-xl dark:border-white/10 dark:bg-[#1c1811]">
+            {opciones.map((opcion) => (
+              <label key={opcion} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-white/10">
+                <input
+                  type="checkbox"
+                  checked={valores.includes(opcion)}
+                  onChange={() => alternar(opcion)}
+                  className="size-4 accent-amber-500"
+                />
+                {opcion}
+              </label>
+            ))}
+            {valores.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onCambio([])}
+                className="mt-1 w-full cursor-pointer rounded-lg px-2 py-1.5 text-left text-sm text-amber-700 hover:bg-neutral-100 dark:text-amber-300 dark:hover:bg-white/10"
+              >
+                Quitar filtro
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   ESTADOS_CON_ENTREGA_OBLIGATORIA,
   OPCIONES,
   OTRA_CANTIDAD,
+  aLocalDeLima,
   ajustarEntrega,
   cantidadDeLinea,
   courierPara,
@@ -20,6 +21,7 @@ import {
   faltaParaEstado,
   juntarLineas,
   lineasDe,
+  momentoDeLima,
   resumenDeProductos,
   type LineaDeProducto,
   type PedidoItem,
@@ -64,7 +66,12 @@ function camposDe(pedido: Pedido | null, hoy: string): Campos {
     nota: texto(pedido?.nota),
     adelanto: texto(pedido?.adelanto),
     pago_completo: texto(pedido?.pago_completo),
-    prox_llamada: texto(pedido?.prox_llamada),
+    // En hora de Lima. Los de la planilla sólo tienen fecha: se proponen a las 9:00.
+    prox_llamada: pedido?.prox_llamada_at
+      ? aLocalDeLima(pedido.prox_llamada_at)
+      : pedido?.prox_llamada
+        ? `${pedido.prox_llamada}T09:00`
+        : "",
     cerrado_por: texto(pedido?.cerrado_por),
     asignado_a: texto(pedido?.asignado_a),
     encargado: texto(pedido?.encargado),
@@ -219,7 +226,7 @@ export function PedidoForm({
       nota: nulo(campos.nota),
       adelanto: numero(campos.adelanto),
       pago_completo: nulo(campos.pago_completo),
-      prox_llamada: nulo(campos.prox_llamada),
+
       cerrado_por: nulo(campos.cerrado_por),
     };
     if (esAdmin || rolVenta === "encargado") {
@@ -229,6 +236,17 @@ export function PedidoForm({
     if (esAdmin) {
       datos.encargado = nulo(campos.encargado.toUpperCase());
       if (campos.codigo.trim()) datos.codigo = campos.codigo.trim().toUpperCase();
+    }
+
+    // La próxima llamada: si cambió, el aviso es para quien la programó.
+    const llamadaInicial = camposDe(pedido, "").prox_llamada;
+    const cambioLaLlamada = campos.prox_llamada !== llamadaInicial;
+    if (cambioLaLlamada) {
+      const { data: sesion } = await supabase.auth.getUser();
+      datos.prox_llamada = campos.prox_llamada ? campos.prox_llamada.slice(0, 10) : null;
+      datos.prox_llamada_at = campos.prox_llamada ? momentoDeLima(campos.prox_llamada) : null;
+      datos.recordatorio_de = campos.prox_llamada ? (sesion.user?.id ?? null) : null;
+      datos.recordatorio_visto = false;
     }
 
     setGuardando(true);
@@ -470,8 +488,16 @@ export function PedidoForm({
           <Campo etiqueta="Costo de envío (S/)">
             <input inputMode="decimal" value={campos.costo_envio} onChange={(e) => cambiar("costo_envio", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Próxima llamada">
-            <input type="date" value={campos.prox_llamada} onChange={(e) => cambiar("prox_llamada", e.target.value)} className={INPUT_CLASS} />
+          <Campo etiqueta="Próxima llamada (hora de Perú)">
+            <input
+              type="datetime-local"
+              value={campos.prox_llamada}
+              onChange={(e) => cambiar("prox_llamada", e.target.value)}
+              className={INPUT_CLASS}
+            />
+            {campos.prox_llamada && (
+              <span className="mt-1 block font-normal text-neutral-500">Te aparece un aviso en el CRM a esa hora.</span>
+            )}
           </Campo>
           <Campo etiqueta="Tracking">
             <input value={campos.tracking} onChange={(e) => cambiar("tracking", e.target.value)} className={INPUT_CLASS} />

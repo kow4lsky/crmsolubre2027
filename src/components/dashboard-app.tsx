@@ -50,6 +50,7 @@ import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
 import { PedidosPanel } from "@/components/pedidos-panel";
+import { RecordatoriosDeLlamada } from "@/components/recordatorios-llamada";
 import { UsuariosPanel } from "@/components/usuarios-panel";
 import { BrandMark } from "@/components/brand";
 import { InboxView } from "@/components/inbox-view";
@@ -261,6 +262,9 @@ function Workspace({
   const access = useAccess();
   useDatosEnVivo();
   const esAsesora = context.rolVenta === "asesor" || context.rolVenta === "asesor_temp";
+  // Un pedido para abrir desde el aviso de llamada. `vez` hace que abrir dos
+  // veces el mismo código lo vuelva a abrir.
+  const [pedidoPorAbrir, setPedidoPorAbrir] = useState<{ codigo: string; vez: number } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = usePreference(SIDEBAR_COLLAPSED_KEY);
 
@@ -468,6 +472,13 @@ function Workspace({
               onOpenTareas={() => selectView("Tareas")}
             />
             <AccountMenu email={context.userEmail} puedeCambiarClave={!esAsesora} />
+            <RecordatoriosDeLlamada
+              userId={context.userId}
+              onAbrir={(codigo) => {
+                selectView("Pedidos");
+                setPedidoPorAbrir({ codigo, vez: Date.now() });
+              }}
+            />
           </div>
         </header>
 
@@ -488,6 +499,7 @@ function Workspace({
               timezone={data.timezone}
               rolVenta={context.rolVenta}
               onNotice={notify}
+              abrir={pedidoPorAbrir}
             />
           ) : view === "Autorizaciones" ? (
             <AutorizacionesPanel
