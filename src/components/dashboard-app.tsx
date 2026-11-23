@@ -20,14 +20,17 @@ import {
   MessageSquareMore,
   Minus,
   Moon,
+  Package,
   Plus,
   RotateCcw,
   Search,
   Settings,
+  ShieldCheck,
   Sun,
   Trash2,
   TrendingDown,
   TrendingUp,
+  UserCog,
   UsersRound,
   X,
 } from "lucide-react";
@@ -46,6 +49,9 @@ import { AgendaPanel } from "@/components/agenda-panel";
 import { AgentsPanel } from "@/components/agents-panel";
 import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
+import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
+import { PedidosPanel } from "@/components/pedidos-panel";
+import { UsuariosPanel } from "@/components/usuarios-panel";
 import { BrandMark } from "@/components/brand";
 import { InboxView } from "@/components/inbox-view";
 import { LeadCard } from "@/components/lead-card";
@@ -88,6 +94,9 @@ import type { Permission } from "@/lib/permissions";
 import type { WorkspaceContext } from "@/lib/workspace";
 
 type View =
+  | "Pedidos"
+  | "Autorizaciones"
+  | "Usuarios"
   | "Resumen"
   | "Conversaciones"
   | "Pipeline"
@@ -110,6 +119,9 @@ type View =
  * y tienen que sobrevivir a que alguien renombre una sección en el menú.
  */
 const VIEW_SLUGS: Record<View, string> = {
+  Pedidos: "pedidos",
+  Autorizaciones: "autorizaciones",
+  Usuarios: "usuarios",
   Resumen: "resumen",
   Conversaciones: "conversaciones",
   Pipeline: "pipeline",
@@ -121,12 +133,12 @@ const VIEW_SLUGS: Record<View, string> = {
   Configuración: "configuracion",
 };
 
-/** Slug de la URL a sección. Cualquier cosa rara cae en el Resumen. */
+/** Slug de la URL a sección. Cualquier cosa rara cae en Pedidos. */
 function viewFromSlug(slug: string | null): View {
   const found = (Object.keys(VIEW_SLUGS) as View[]).find(
     (label) => VIEW_SLUGS[label] === slug?.trim().toLowerCase(),
   );
-  return found ?? "Resumen";
+  return found ?? "Pedidos";
 }
 
 /**
@@ -139,6 +151,9 @@ const NAVIGATION: {
   permission?: Permission;
   adminOnly?: boolean;
 }[] = [
+  { label: "Pedidos", icon: Package },
+  { label: "Autorizaciones", icon: ShieldCheck },
+  { label: "Usuarios", icon: UserCog, adminOnly: true },
   { label: "Resumen", icon: LayoutDashboard },
   { label: "Conversaciones", icon: MessageSquareMore },
   { label: "Pipeline", icon: LineChart },
@@ -267,7 +282,7 @@ function Workspace({
 
   const [view, setView] = useState<View>(() => {
     const wanted = viewFromSlug(vista);
-    return allowed(wanted) ? wanted : "Resumen";
+    return allowed(wanted) ? wanted : "Pedidos";
   });
   const [showContactForm, setShowContactForm] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -455,10 +470,30 @@ function Workspace({
             scroll interno, y el ancho máximo con padding la encajonaba. */}
         <div
           className={
-            view === "Conversaciones" ? "" : "mx-auto max-w-[1600px] p-5 sm:p-8"
+            view === "Conversaciones"
+              ? ""
+              : view === "Pedidos"
+                ? "p-3 sm:p-5"
+                : "mx-auto max-w-[1600px] p-5 sm:p-8"
           }
         >
-          {view === "Resumen" ? (
+          {view === "Pedidos" ? (
+            <PedidosPanel
+              workspaceId={context.workspaceId}
+              timezone={data.timezone}
+              rolVenta={context.rolVenta}
+              onNotice={notify}
+            />
+          ) : view === "Autorizaciones" ? (
+            <AutorizacionesPanel
+              workspaceId={context.workspaceId}
+              timezone={data.timezone}
+              rolVenta={context.rolVenta}
+              onNotice={notify}
+            />
+          ) : view === "Usuarios" ? (
+            <UsuariosPanel onNotice={notify} />
+          ) : view === "Resumen" ? (
             <Overview data={data} onNavigate={selectView} onOpenLead={setOpenLead} />
           ) : (
             <ModuleView

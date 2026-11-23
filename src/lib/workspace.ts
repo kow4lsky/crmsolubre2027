@@ -7,6 +7,7 @@ import {
   type MemberRole,
   type PermissionMap,
 } from "@/lib/permissions";
+import { esRolVenta, type RolVenta } from "@/lib/pedidos";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
@@ -33,6 +34,10 @@ export type WorkspaceContext =
       /** Sólo cuentan para el operario: el administrador puede todo. */
       permissions: PermissionMap;
       isAdmin: boolean;
+      /** Rol en la venta: admin, encargado, asesor o asesor temporal. */
+      rolVenta: RolVenta;
+      /** Nombre con el que figura en los pedidos (MILTON, NATHALY...). */
+      alias: string | null;
     };
 
 type WorkspaceUnico =
@@ -96,25 +101,34 @@ async function workspaceUnico(): Promise<WorkspaceUnico> {
 }
 
 /**
- * Suma al usuario al workspace como administrador.
+ * Suma al usuario al workspace como asesor.
  *
  * Es lo que hace que crear la cuenta en el panel de Supabase alcance: ahí sólo
  * nace la cuenta de acceso, y la membresía —que es lo que de verdad abre el
  * CRM— vive en otra tabla.
  *
- * En esta versión no hay pantalla de Usuarios ni roles para repartir: toda
- * cuenta que entra ve y puede todo. Por eso es clave dejar apagado el registro
- * público en Supabase (ver el README): cualquier cuenta del proyecto entra como
- * administradora.
+ * Entra con el rol más chico (asesor: sólo ve sus pedidos) y el administrador
+ * se lo cambia en Usuarios. Igual conviene dejar apagado el registro público en
+ * Supabase: así sólo entra quien vos diste de alta.
  *
  * Va con la service role key porque todavía no es miembro, y la política de
  * `workspace_members` sólo deja escribir a los administradores del workspace.
  */
 async function autoAlta(workspaceId: string, userId: string): Promise<void> {
   try {
-    await getSupabaseAdmin()
+    // Entra como asesor: el administrador le cambia el rol en Usuarios. Antes
+    // entraba como administrador, y con roles de venta eso dejaba ver todo a
+    // cualquier cuenta nueva.
+    const admin = getSupabaseAdmin();
+    const { error } = await admin
       .from("workspace_members")
-      .insert({ workspace_id: workspaceId, user_id: userId, role: "admin", permissions: {} });
+      .insert({ workspace_id: workspaceId, user_id: userId, role: "agent", permissions: {}, rol_venta: "asesor" });
+    // Sin la migración de pedidos todavía no existe `rol_venta`.
+    if (error && /rol_venta/.test(error.message)) {
+      await admin
+        .from("workspace_members")
+        .insert({ workspace_id: workspaceId, user_id: userId, role: "agent", permissions: {} });
+    }
   } catch {
     // Si falla —por ejemplo, dos pestañas entrando a la vez y una gana la
     // clave primaria—, la lectura siguiente decide. No hay nada que reportar.
@@ -195,6 +209,22 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
   const role: MemberRole =
     data.role === "owner" || data.role === "admin" ? data.role : "agent";
 
+  // El rol de venta se pide aparte: si la migración de pedidos todavía no se
+  // corrió, la columna no existe y no puede tirar abajo el ingreso.
+  const venta = await supabase
+    .from("workspace_members")
+    .select("rol_venta, alias")
+    .eq("workspace_id", data.workspace_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const rolGuardado = venta.error ? null : venta.data?.rol_venta;
+  const rolVenta: RolVenta = isAdminRole(role)
+    ? "admin"
+    : esRolVenta(rolGuardado)
+      ? rolGuardado
+      : "asesor";
+  const alias = venta.error ? null : ((venta.data?.alias as string | null) ?? null);
+
   return {
     status: "ready",
     userId: user.id,
@@ -205,5 +235,7 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext> {
     role,
     permissions: sanitizePermissions(data.permissions),
     isAdmin: isAdminRole(role),
+    rolVenta,
+    alias,
   };
 }
