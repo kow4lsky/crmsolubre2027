@@ -27,9 +27,10 @@ que te cuente o te pase una captura del error antes de seguir.
   Zernio). Las de Supabase y `INTEGRATIONS_ENCRYPTION_KEY` se cargan en Vercel,
   en Environment Variables; las de OpenAI, YCloud y Zernio, en el CRM, en
   **Configuración → Conexiones**, que las guarda cifradas.
-- Roles de venta: la cuenta principal es administradora; toda cuenta nueva entra
-  como **asesor** (sólo ve sus pedidos) y el admin le cambia rol y alias en
-  **Usuarios**. Igual insistí en que deje **apagado** "Allow new users to sign up".
+- Roles de venta: la cuenta principal es administradora. Los usuarios se crean
+  desde el CRM, en **Configuración → Usuarios → Agregar usuario** (correo,
+  contraseña, rol, alias y secciones que ve). Una cuenta creada a mano en
+  Supabase entra como **asesor** y el admin la ajusta ahí mismo. Igual insistí en que deje **apagado** "Allow new users to sign up".
 - **Pedidos** (tabla `pedidos`, migración `202611230001_pedidos.sql`) es la
   sección principal: reemplaza el CRM en Google Sheets + Apps Script. Las reglas
   de quién ve y cambia qué viven en Postgres (RLS y triggers), no sólo en la

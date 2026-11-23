@@ -37,6 +37,7 @@ import {
 import {
   ROLE_LABELS,
   can,
+  sanitizePermissions,
   type MemberRole,
   type Permission,
   type PermissionMap,
@@ -59,6 +60,7 @@ import {
 } from "@/lib/supabase/storage";
 import { errorDeContrasena } from "@/lib/password";
 import { esRolVenta, type RolVenta } from "@/lib/pedidos";
+import { esSeccionAsignable, seccionesDe, type SeccionAsignable } from "@/lib/secciones";
 import { getWorkspaceContext } from "@/lib/workspace";
 import { esIntegracion, type Integracion } from "@/lib/integraciones";
 import {
@@ -3966,6 +3968,8 @@ export type MiembroDeVenta = {
   alias: string | null;
   /** La cuenta principal: siempre administradora. */
   principal: boolean;
+  /** Las secciones que ve. */
+  secciones: SeccionAsignable[];
 };
 
 /** El equipo con su rol de venta. Sólo para el administrador. */
@@ -3975,14 +3979,19 @@ export async function cargarEquipoDeVenta(): Promise<
   const scope = await requireAdmin();
   if (!scope.ok) return { ok: false, error: scope.error };
 
-  const [{ data, error }, emails] = await Promise.all([
+  type Fila = { user_id: string; role: string; rol_venta?: string; alias?: string | null; secciones?: string[] | null };
+  const leer = (columnas: string) =>
     scope.supabase
       .from("workspace_members")
-      .select("user_id, role, rol_venta, alias")
+      .select(columnas)
       .eq("workspace_id", scope.workspaceId)
-      .order("created_at", { ascending: true }),
-    emailsById(),
-  ]);
+      .order("created_at", { ascending: true })
+      .returns<Fila[]>();
+  const [primera, emails] = await Promise.all([leer("user_id, role, rol_venta, alias, secciones"), emailsById()]);
+  // Sin el SQL de secciones, la columna todavía no existe.
+  const { data, error } = primera.error && /secciones/.test(primera.error.message)
+    ? await leer("user_id, role, rol_venta, alias")
+    : primera;
   if (error) {
     return {
       ok: false,
@@ -3994,18 +4003,22 @@ export async function cargarEquipoDeVenta(): Promise<
 
   return {
     ok: true,
-    miembros: (data ?? []).map((row) => ({
-      userId: row.user_id,
-      email: emails.get(row.user_id) ?? "Usuario sin mail",
-      rolVenta:
+    miembros: (data ?? []).map((row) => {
+      const rolVenta: RolVenta =
         row.role === "owner" || row.role === "admin"
           ? "admin"
           : esRolVenta(row.rol_venta)
             ? row.rol_venta
-            : "asesor",
-      alias: row.alias ?? null,
-      principal: row.role === "owner",
-    })),
+            : "asesor";
+      return {
+        userId: row.user_id,
+        email: emails.get(row.user_id) ?? "Usuario sin correo",
+        rolVenta,
+        alias: row.alias ?? null,
+        principal: row.role === "owner",
+        secciones: seccionesDe(row.secciones, rolVenta),
+      };
+    }),
   };
 }
 
@@ -4035,4 +4048,131 @@ export async function guardarMiembroDeVenta(input: {
 
   revalidatePath("/");
   return { ok: true };
+}
+
+/**
+ * Los permisos que acompañan a una sección: ver Agentes IA sin poder editarlos
+ * o ver Conversaciones sin poder responder no le sirve a nadie.
+ */
+const PERMISOS_DE_SECCION: Partial<Record<SeccionAsignable, Permission>> = {
+  "Agentes IA": "gestionar_agentes",
+  Conversaciones: "responder_chats",
+};
+
+function permisosPara(secciones: SeccionAsignable[], actuales: PermissionMap): PermissionMap {
+  const nuevos: PermissionMap = { ...actuales };
+  for (const [seccion, permiso] of Object.entries(PERMISOS_DE_SECCION) as [SeccionAsignable, Permission][]) {
+    if (secciones.includes(seccion)) nuevos[permiso] = true;
+    else delete nuevos[permiso];
+  }
+  return nuevos;
+}
+
+function limpiarSecciones(entrada: unknown): SeccionAsignable[] {
+  if (!Array.isArray(entrada)) return [];
+  return [...new Set(entrada.filter((s): s is SeccionAsignable => typeof s === "string" && esSeccionAsignable(s)))];
+}
+
+/** Guarda qué secciones ve alguien del equipo. */
+export async function guardarSeccionesDeMiembro(input: {
+  userId: string;
+  secciones: string[];
+}): Promise<ActionResult> {
+  const scope = await requireAdmin();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  const secciones = limpiarSecciones(input.secciones);
+
+  const { error } = await scope.supabase.rpc("guardar_secciones", {
+    ws: scope.workspaceId,
+    usuario: input.userId,
+    nuevas: secciones,
+  });
+  if (error) {
+    return {
+      ok: false,
+      error: /guardar_secciones/.test(error.message) ? "Falta correr el SQL de secciones en Supabase." : error.message,
+    };
+  }
+
+  const admin = getSupabaseAdmin();
+  const { data } = await admin
+    .from("workspace_members")
+    .select("permissions")
+    .eq("workspace_id", scope.workspaceId)
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  await admin
+    .from("workspace_members")
+    .update({ permissions: permisosPara(secciones, sanitizePermissions(data?.permissions)) })
+    .eq("workspace_id", scope.workspaceId)
+    .eq("user_id", input.userId);
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/**
+ * Crea la cuenta de alguien del equipo con correo y contraseña, ya confirmada,
+ * y lo suma al CRM con su rol, alias y secciones. Reemplaza el paso por el
+ * panel de Supabase.
+ */
+export async function crearUsuarioDelEquipo(input: {
+  email: string;
+  password: string;
+  rolVenta: RolVenta;
+  alias: string;
+  secciones: string[];
+}): Promise<ActionResult> {
+  const scope = await requireAdmin("crear usuarios");
+  if (!scope.ok) return { ok: false, error: scope.error };
+
+  const email = (input.email ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Escribe un correo válido." };
+  const floja = errorDeContrasena(input.password ?? "");
+  if (floja) return { ok: false, error: floja };
+  if (!esRolVenta(input.rolVenta)) return { ok: false, error: "Elige un rol." };
+  const alias = (input.alias ?? "").trim().toUpperCase();
+  if (input.rolVenta !== "admin" && !alias) {
+    return { ok: false, error: "Ponle un alias: es el nombre con el que figura en los pedidos." };
+  }
+  if (alias.length > 30) return { ok: false, error: "El alias puede tener hasta 30 letras." };
+  const secciones = limpiarSecciones(input.secciones);
+
+  const admin = getSupabaseAdmin();
+  const creado = await admin.auth.admin.createUser({ email, password: input.password, email_confirm: true });
+  if (creado.error || !creado.data.user) {
+    const mensaje = creado.error?.message ?? "";
+    return {
+      ok: false,
+      error: /already|registered|exists/i.test(mensaje)
+        ? "Ya existe una cuenta con ese correo."
+        : `No se pudo crear la cuenta: ${mensaje || "error desconocido"}.`,
+    };
+  }
+
+  const userId = creado.data.user.id;
+  const fila = {
+    workspace_id: scope.workspaceId,
+    user_id: userId,
+    role: input.rolVenta === "admin" ? "admin" : "agent",
+    rol_venta: input.rolVenta,
+    alias: alias || null,
+    permissions: input.rolVenta === "admin" ? {} : permisosPara(secciones, {}),
+    secciones,
+  };
+  let alta = await admin.from("workspace_members").insert(fila);
+  // Sin el SQL de secciones, se guarda sin ellas (verá las de su rol).
+  if (alta.error && /secciones/.test(alta.error.message)) {
+    const { secciones: _sinSecciones, ...sinSecciones } = fila;
+    void _sinSecciones;
+    alta = await admin.from("workspace_members").insert(sinSecciones);
+  }
+  if (alta.error) {
+    // Que no quede una cuenta suelta que entra como asesor sin que nadie lo sepa.
+    await admin.auth.admin.deleteUser(userId);
+    return { ok: false, error: `No se pudo sumar al equipo: ${alta.error.message}` };
+  }
+
+  revalidatePath("/");
+  return { ok: true, warning: `Listo: ${email} ya puede entrar al CRM.` };
 }

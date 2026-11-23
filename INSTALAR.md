@@ -79,9 +79,9 @@ contesta.
 
 1. Entrá a tu dirección de Vercel con el mail y la contraseña del paso 2.
 2. Ponele nombre a tu workspace. Listo: ya estás adentro.
-3. Para sumar a alguien de tu equipo, creale la cuenta igual que la tuya
-   (Supabase → Authentication → Users). La primera vez que entra queda como
-   **asesor**; en el CRM, **Usuarios**, le elegís el rol y el alias.
+3. Para sumar a alguien de tu equipo: en el CRM, **Configuración → Usuarios →
+   Agregar usuario**, con su correo, una contraseña, el rol, el alias y las
+   secciones que puede ver.
 
 ## Paso 6 · Conexiones (OpenAI, YCloud y Zernio)
 
@@ -152,7 +152,7 @@ esta lista. Tildá cada punto recién cuando lo hayas comprobado.
   / Providers**, *Allow new users to sign up* tiene que estar **apagado**.
 - [ ] **Sólo tienen cuenta las personas que vos elegiste.** En Supabase →
   **Authentication → Users**, borrá las que no reconozcas. En el CRM,
-  **Usuarios**, revisá que cada persona tenga el rol que corresponde.
+  **Configuración → Usuarios**, revisa que cada persona tenga el rol que corresponde.
 - [ ] **Tus claves no están en ningún lado más.** La service_role de Supabase y
   las keys de OpenAI, YCloud y Zernio no se mandan por chat, mail ni WhatsApp.
   Si alguna se compartió, generá una nueva y reemplazala.
