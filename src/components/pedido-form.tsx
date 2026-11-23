@@ -1,14 +1,22 @@
 "use client";
 
-import { History, ShieldAlert } from "lucide-react";
+import { History, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { BOTON_SECUNDARIO, EstadoChip } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import { dayKeyInZone } from "@/lib/fechas";
 import {
+  CANTIDADES_RAPIDAS,
   ESTADOS,
   OPCIONES,
+  OTRA_CANTIDAD,
+  cantidadDeLinea,
+  juntarLineas,
+  lineasDe,
+  resumenDeProductos,
+  type LineaDeProducto,
+  type PedidoItem,
   estadosIniciales,
   puedeCambiarEstado,
   type Pedido,
@@ -17,7 +25,7 @@ import {
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
 type Campos = Record<
-  | "codigo" | "fecha_registro" | "monto" | "pedido" | "cliente" | "direccion" | "dni" | "provincia"
+  | "codigo" | "fecha_registro" | "monto" | "cliente" | "direccion" | "dni" | "provincia"
   | "distrito" | "celular" | "destino" | "estado" | "asesor" | "canal" | "envio" | "courier"
   | "costo_envio" | "inventario" | "tracking" | "clave" | "nota" | "adelanto" | "pago_completo"
   | "prox_llamada" | "cerrado_por" | "asignado_a" | "encargado",
@@ -31,7 +39,6 @@ function camposDe(pedido: Pedido | null, hoy: string): Campos {
     codigo: texto(pedido?.codigo),
     fecha_registro: pedido?.fecha_registro ?? hoy,
     monto: texto(pedido?.monto ?? ""),
-    pedido: texto(pedido?.pedido),
     cliente: texto(pedido?.cliente),
     direccion: texto(pedido?.direccion),
     dni: texto(pedido?.dni),
@@ -89,7 +96,9 @@ export function PedidoForm({
   const nuevo = pedido === null;
   const [campos, setCampos] = useState<Campos>(() => camposDe(pedido, dayKeyInZone(new Date(), timezone)));
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [cantidades, setCantidades] = useState<Record<string, string>>({});
+  const [lineas, setLineas] = useState<LineaDeProducto[]>([]);
+  // Los pedidos de la planilla vieja pueden traer sólo el texto, sin productos.
+  const resumenAnterior = pedido?.pedido?.trim() ?? "";
   const [historial, setHistorial] = useState<Movimiento[]>([]);
   const [verHistorial, setVerHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -113,18 +122,24 @@ export function PedidoForm({
           : Promise.resolve({ data: [] as Movimiento[] }),
       ]);
       const nombres = new Set((lista.data ?? []).map((p) => p.nombre as string));
-      const cargadas: Record<string, string> = {};
-      for (const item of items.data ?? []) {
-        cargadas[item.producto] = String(item.cantidad);
-        nombres.add(item.producto);
-      }
+      const cargados = (items.data ?? []) as PedidoItem[];
+      for (const item of cargados) nombres.add(item.producto);
       setProductos([...nombres].map((nombre) => ({ nombre })));
-      setCantidades(cargadas);
+      setLineas(lineasDe(cargados));
       setHistorial((movimientos.data ?? []) as Movimiento[]);
     })();
   }, [supabase, workspaceId, pedido]);
 
   const cambiar = (clave: keyof Campos, valor: string) => setCampos((c) => ({ ...c, [clave]: valor }));
+
+  const itemsElegidos = juntarLineas(lineas);
+  // Sin productos cargados, un pedido viejo conserva el texto que traía.
+  const resumen = itemsElegidos.length ? resumenDeProductos(itemsElegidos) : resumenAnterior;
+
+  const cambiarLinea = (indice: number, cambio: Partial<LineaDeProducto>) =>
+    setLineas((actuales) => actuales.map((linea, i) => (i === indice ? { ...linea, ...cambio } : linea)));
+  const agregarLinea = () => setLineas((actuales) => [...actuales, { producto: "", cantidad: "1", otra: "" }]);
+  const quitarLinea = (indice: number) => setLineas((actuales) => actuales.filter((_, i) => i !== indice));
 
   const estadoOriginal = pedido?.estado ?? null;
   const necesitaPermiso = !nuevo && estadoOriginal !== null && !puedeCambiarEstado(rolVenta, estadoOriginal, campos.estado);
@@ -139,6 +154,16 @@ export function PedidoForm({
     if (celular && celular.length !== 9) return setError("El celular tiene que tener 9 dígitos.");
     const dni = campos.dni.replace(/\D/g, "");
     if (dni && (dni.length < 8 || dni.length > 11)) return setError("El DNI o RUC tiene que tener entre 8 y 11 dígitos.");
+    const incompleta = lineas.findIndex((linea) => !linea.producto || cantidadDeLinea(linea) === null);
+    if (incompleta > -1) {
+      const linea = lineas[incompleta];
+      return setError(
+        !linea.producto
+          ? `Elegí el producto del renglón ${incompleta + 1}, o quitalo.`
+          : `Escribí la cantidad de ${linea.producto} (un número entero mayor a cero).`,
+      );
+    }
+    if (!itemsElegidos.length && !resumenAnterior) return setError("Añadí al menos un producto.");
     if (necesitaPermiso && !motivo.trim()) {
       return setError("Contá por qué querés cambiar el estado: el administrador lo va a leer para aprobarlo.");
     }
@@ -146,7 +171,7 @@ export function PedidoForm({
     const datos: Record<string, unknown> = {
       fecha_registro: campos.fecha_registro || dayKeyInZone(new Date(), timezone),
       monto: numero(campos.monto) ?? 0,
-      pedido: campos.pedido.trim(),
+      pedido: resumen,
       cliente: campos.cliente.trim(),
       direccion: nulo(campos.direccion),
       dni: dni || null,
@@ -203,9 +228,7 @@ export function PedidoForm({
     }
 
     // Los productos se guardan enteros: lo que quedó en el formulario es lo que lleva.
-    const items = Object.entries(cantidades)
-      .map(([producto, cantidad]) => ({ producto, cantidad: numero(cantidad) ?? 0 }))
-      .filter((item) => item.cantidad > 0);
+    const items = itemsElegidos;
     if (id) {
       if (!nuevo) await supabase.from("pedido_items").delete().eq("pedido_id", id);
       if (items.length) {
@@ -268,26 +291,84 @@ export function PedidoForm({
           <Campo etiqueta="Monto (S/)">
             <input inputMode="decimal" value={campos.monto} onChange={(e) => cambiar("monto", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Pedido (resumen)" ancho>
-            <input value={campos.pedido} onChange={(e) => cambiar("pedido", e.target.value)} placeholder="3xsolubre, 1xcv" className={INPUT_CLASS} />
-          </Campo>
+
         </Seccion>
 
-        {productos.length > 0 && (
-          <Seccion titulo="Productos">
-            {productos.map(({ nombre }) => (
-              <Campo key={nombre} etiqueta={nombre}>
-                <input
-                  inputMode="numeric"
-                  value={cantidades[nombre] ?? ""}
-                  onChange={(e) => setCantidades((c) => ({ ...c, [nombre]: e.target.value }))}
-                  placeholder="0"
-                  className={INPUT_CLASS}
-                />
-              </Campo>
-            ))}
-          </Seccion>
-        )}
+        <fieldset>
+          <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Productos</legend>
+          <div className="space-y-2">
+            {lineas.map((linea, i) => {
+              // Un producto ya elegido en otro renglón no se ofrece de nuevo.
+              const usados = new Set(lineas.filter((_, j) => j !== i).map((l) => l.producto));
+              return (
+                <div key={i} className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[2fr_1fr_1fr_auto]">
+                  <select
+                    aria-label={`Producto ${i + 1}`}
+                    value={linea.producto}
+                    onChange={(e) => cambiarLinea(i, { producto: e.target.value })}
+                    className={`${INPUT_CLASS} col-span-2 sm:col-span-1`}
+                  >
+                    <option value="">Elegí un producto…</option>
+                    {productos
+                      .filter(({ nombre }) => nombre === linea.producto || !usados.has(nombre))
+                      .map(({ nombre }) => (
+                        <option key={nombre} value={nombre}>
+                          {nombre}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    aria-label={`Cantidad ${i + 1}`}
+                    value={linea.cantidad}
+                    onChange={(e) => cambiarLinea(i, { cantidad: e.target.value, otra: "" })}
+                    className={INPUT_CLASS}
+                  >
+                    {CANTIDADES_RAPIDAS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                    <option value={OTRA_CANTIDAD}>Otro monto</option>
+                  </select>
+                  {linea.cantidad === OTRA_CANTIDAD ? (
+                    <input
+                      aria-label={`Otra cantidad ${i + 1}`}
+                      inputMode="numeric"
+                      autoFocus
+                      value={linea.otra}
+                      onChange={(e) => cambiarLinea(i, { otra: e.target.value.replace(/\D/g, "") })}
+                      placeholder="Cantidad"
+                      className={INPUT_CLASS}
+                    />
+                  ) : (
+                    <span className="hidden sm:block" />
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Quitar producto ${i + 1}`}
+                    onClick={() => quitarLinea(i)}
+                    className={`${BOTON_SECUNDARIO} h-[46px]`}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              );
+            })}
+            <button type="button" onClick={agregarLinea} className={BOTON_SECUNDARIO}>
+              <Plus className="size-4" /> Añadir producto
+            </button>
+          </div>
+          <p className="mt-3 rounded-xl bg-white px-3 py-2.5 text-sm dark:bg-white/5">
+            <span className="text-neutral-500">Resumen: </span>
+            <b>{resumen || "—"}</b>
+            {!itemsElegidos.length && resumenAnterior && (
+              <span className="ml-1 text-xs text-neutral-500">(de la planilla; se reemplaza al añadir productos)</span>
+            )}
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Sale del inventario cuando el pedido de Lima está ENTREGADO, o el de Provincia pasa a EN TRÁNSITO.
+          </p>
+        </fieldset>
 
         <Seccion titulo="Cliente">
           <Campo etiqueta="Cliente *" ancho>

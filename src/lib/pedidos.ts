@@ -284,3 +284,58 @@ export function terminoDeBusqueda(texto: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/* --------------------------------------------------- productos del pedido */
+
+/** Las cantidades rápidas del desplegable. Más que eso va por "Otro monto". */
+export const CANTIDADES_RAPIDAS = ["1", "2", "3", "4", "5"] as const;
+
+/** Un renglón del formulario: producto, cantidad elegida y, si es "otro", la escrita. */
+export type LineaDeProducto = { producto: string; cantidad: string; otra: string };
+
+export const OTRA_CANTIDAD = "otro";
+
+/** La cantidad de un renglón, o null si todavía no es válida. */
+export function cantidadDeLinea(linea: LineaDeProducto): number | null {
+  const texto = linea.cantidad === OTRA_CANTIDAD ? linea.otra : linea.cantidad;
+  const numero = Number(String(texto).replace(",", ".").trim());
+  return Number.isFinite(numero) && numero > 0 && Number.isInteger(numero) ? numero : null;
+}
+
+/** Los renglones → productos del pedido. Si un producto se repite, se suma. */
+export function juntarLineas(lineas: LineaDeProducto[]): PedidoItem[] {
+  const total = new Map<string, number>();
+  for (const linea of lineas) {
+    const cantidad = cantidadDeLinea(linea);
+    if (!linea.producto || cantidad === null) continue;
+    total.set(linea.producto, (total.get(linea.producto) ?? 0) + cantidad);
+  }
+  return [...total.entries()].map(([producto, cantidad]) => ({ producto, cantidad }));
+}
+
+/** Lo que ya lleva un pedido → renglones del formulario. */
+export function lineasDe(items: PedidoItem[]): LineaDeProducto[] {
+  return items.map(({ producto, cantidad }) => {
+    const texto = String(Number(cantidad));
+    const rapida = (CANTIDADES_RAPIDAS as readonly string[]).includes(texto);
+    return { producto, cantidad: rapida ? texto : OTRA_CANTIDAD, otra: rapida ? "" : texto };
+  });
+}
+
+/** "3xSOLUBRE, 1xCEPILLO VERDE": la línea de resumen que se ve en la tabla. */
+export function resumenDeProductos(items: PedidoItem[]): string {
+  return items.map(({ producto, cantidad }) => `${Number(cantidad)}x${producto}`).join(", ");
+}
+
+/**
+ * Si un pedido ya salió del inventario.
+ *
+ * Lima: recién cuando está ENTREGADO. Provincia: desde que sale a la agencia
+ * (EN TRÁNSITO); sigue contando en EN OFICINA y ENTREGADO, porque el paquete
+ * ya no está en el almacén. Sin destino se trata como Lima.
+ */
+export function saleDeInventario(destino: string | null, estado: string): boolean {
+  const esProvincia = (destino ?? "").trim().toUpperCase().startsWith("PROV");
+  if (esProvincia) return estado === "EN TRÁNSITO" || estado === "EN OFICINA" || estado === "ENTREGADO";
+  return estado === "ENTREGADO";
+}
