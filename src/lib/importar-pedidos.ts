@@ -199,6 +199,8 @@ export type LecturaDePedidos = {
   /** Cada fila de un código repetido, para revisarla. */
   detalleRepetidos: DetalleRepetido[];
   fueraDeRango: number;
+  /** Montos o cantidades fuera de lo razonable: se guardaron en "otros datos". */
+  valoresRaros: number;
   estadosDesconocidos: Record<string, number>;
   error: string | null;
 };
@@ -209,7 +211,7 @@ export type LecturaDePedidos = {
  */
 export function leerPedidos(filasCsv: string[][], desde: string | null = null): LecturaDePedidos {
   const vacia: LecturaDePedidos = {
-    filas: [], reconocidas: [], extras: [], sinCodigo: 0, codigosRepetidos: 0, detalleRepetidos: [], fueraDeRango: 0,
+    filas: [], reconocidas: [], extras: [], sinCodigo: 0, codigosRepetidos: 0, detalleRepetidos: [], fueraDeRango: 0, valoresRaros: 0,
     estadosDesconocidos: {}, error: null,
   };
 
@@ -258,7 +260,13 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
 
       if (destino.tipo === "producto") {
         const cantidad = leerMonto(valor);
-        if (cantidad && cantidad > 0) fila.items[destino.nombre] = cantidad;
+        if (cantidad === null || cantidad === 0) return;
+        // Una cantidad rara (un celular pegado en la columna, decimales) no
+        // se carga como cantidad: queda en "otros datos" para no perderla.
+        if (cantidad < 0 || cantidad > MAXIMA_CANTIDAD || !Number.isInteger(cantidad)) {
+          fila.extra[titulos[i].trim()] = valor;
+          lectura.valoresRaros += 1;
+        } else fila.items[destino.nombre] = cantidad;
         return;
       }
       if (destino.tipo === "extra") {
@@ -286,8 +294,11 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
         else fila.extra[titulos[i].trim()] = valor;
       } else if (NUMEROS.has(columna)) {
         const numero = leerMonto(valor);
-        if (numero !== null) fila[columna] = numero;
-        else fila.extra[titulos[i].trim()] = valor;
+        if (numero !== null && Math.abs(numero) <= MAXIMO_MONTO) fila[columna] = numero;
+        else {
+          fila.extra[titulos[i].trim()] = valor;
+          if (numero !== null) lectura.valoresRaros += 1;
+        }
       } else if (columna === "celular") fila.celular = leerCelular(valor);
       else if (ALIAS.has(columna)) fila[columna] = leerAlias(valor);
       // En la planilla vieja Swayp figuraba como "Swipe".
@@ -353,6 +364,14 @@ function detalle(fila: FilaPedido, codigo: string, decision: string): DetalleRep
     decision,
   };
 }
+
+/**
+ * Lo más grande que se acepta como monto (S/) y como cantidad de un producto.
+ * Más que eso es casi seguro un celular, un DNI o un tracking en la columna
+ * equivocada, y además no entra en la base.
+ */
+export const MAXIMO_MONTO = 1_000_000;
+export const MAXIMA_CANTIDAD = 1000;
 
 /** De a cuántos pedidos se mandan a la base. */
 export const TANDA_DE_IMPORTACION = 400;
