@@ -89,7 +89,7 @@ export function estadosIniciales(rol: RolVenta): Estado[] {
 /** Las listas desplegables de la planilla. Se pueden ampliar sin tocar la base. */
 export const OPCIONES = {
   destino: ["Lima", "Provincia"],
-  canal: ["WASAP IA", "WEB", "SHOPIFY", "WASAP EMP", "REDES (Inst,Mess)"],
+  canal: ["WASAP IA", "WEB", "SHOPIFY TIENDA", "SHOPIFY LANDING", "SHOPIFY", "WASAP EMP", "REDES (Inst,Mess)"],
   envio: ["Express", "Indriver", "Prog.Normal", "Prov.Agencia"],
   courier: ["Olva", "Shalom", "Marvisur", "Swayp", "Solubre"],
   inventario: ["SOLUBRE", "SWAYP"],
