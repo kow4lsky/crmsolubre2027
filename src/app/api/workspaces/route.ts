@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "El CRM ya está instalado. Pedile a quien lo administra que cree tu cuenta en Supabase.",
+          "El CRM ya está instalado. Pídele a quien lo administra que cree tu cuenta en Supabase.",
       },
       { status: 409 },
     );

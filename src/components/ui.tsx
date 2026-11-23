@@ -38,7 +38,7 @@ export function avatarColor(name: string) {
  * que ya usaban la zona del workspace, decían la hora bien y la agenda no.
  */
 export const dateTime = (value: string, timeZone: string) =>
-  new Date(value).toLocaleString("es-AR", {
+  new Date(value).toLocaleString("es-PE", {
     timeZone: safeTimeZone(timeZone),
     day: "2-digit",
     month: "short",
@@ -47,7 +47,7 @@ export const dateTime = (value: string, timeZone: string) =>
     hour12: false,
   });
 
-export const money = (amount: number) => `US$ ${amount.toLocaleString("es-AR")}`;
+export const money = (amount: number) => `S/ ${amount.toLocaleString("es-PE")}`;
 
 export const INPUT_CLASS =
   "w-full rounded-xl border border-[#ddd8c9] bg-[#f9f8f3] px-3 py-2.5 text-base outline-none transition focus:ring-2 focus:ring-amber-500 dark:border-white/10 dark:bg-white/5";

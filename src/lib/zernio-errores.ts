@@ -40,8 +40,8 @@ export function describeError(status: number, detail: string, accountId?: string
     return [
       "Meta no deja responder esta conversación desde el CRM porque la está atendiendo otra",
       "app conectada a la cuenta (otra herramienta de mensajes o la bandeja de Meta). Para",
-      "que el CRM pueda contestar, en Meta Business Suite buscá «Enrutamiento de",
-      "conversaciones» (Conversation routing) y elegí Zernio como app predeterminada. Si la",
+      "que el CRM pueda contestar, en Meta Business Suite busca «Enrutamiento de",
+      "conversaciones» (Conversation routing) y elige Zernio como app predeterminada. Si la",
       "otra herramienta tiene que seguir atendiendo, este chat se responde desde ahí.",
       cita(motivo),
     ]
@@ -51,7 +51,7 @@ export function describeError(status: number, detail: string, accountId?: string
 
   switch (status) {
     case 401:
-      return `Zernio rechazó la API key. Revisala en Configuración → Conexiones. ${cita(motivo)}`.trim();
+      return `Zernio rechazó la API key. Revísala en Configuración → Conexiones. ${cita(motivo)}`.trim();
     case 403:
       // Meta solo deja responder dentro de las 24 horas del último mensaje del
       // contacto. Fuera de esa ventana no hay nada que arreglar en el CRM ni en
@@ -67,14 +67,14 @@ export function describeError(status: number, detail: string, accountId?: string
       return [
         `Zernio rechazó el envío por la cuenta ${accountId ?? "de esta conversación"} (403).`,
         cita(motivo),
-        "Si no dice por qué, revisá en /api/zernio/check qué cuentas reconoce la API key.",
+        "Si no dice por qué, revisa en /api/zernio/check qué cuentas reconoce la API key.",
       ]
         .filter(Boolean)
         .join(" ");
     case 404:
       return "Zernio no encontró esa conversación.";
     case 429:
-      return "Zernio está limitando los envíos. Probá de nuevo en un momento.";
+      return "Zernio está limitando los envíos. Prueba de nuevo en un momento.";
     default:
       return `Zernio devolvió ${status}. ${cita(motivo)}`.trim();
   }

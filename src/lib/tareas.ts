@@ -135,7 +135,7 @@ export function filaATarea(fila: Record<string, unknown>): TareaRow {
  */
 export function errorDeTarea(mensaje: string): string {
   if (/row-level security/i.test(mensaje)) {
-    return "No tenés permiso para hacer eso con esta tarea.";
+    return "No tienes permiso para hacer eso con esta tarea.";
   }
   if (/tareas/.test(mensaje) && /does not exist|could not find/i.test(mensaje)) {
     return "Falta correr la migración de tareas en Supabase (202610070001_tareas.sql).";
@@ -209,7 +209,7 @@ export function validarTarea(
   entrada: TareaEntrante,
 ): { ok: true; tarea: TareaValida } | { ok: false; error: string } {
   const titulo = typeof entrada.titulo === "string" ? entrada.titulo.trim() : "";
-  if (!titulo) return { ok: false, error: "Escribí qué hay que hacer." };
+  if (!titulo) return { ok: false, error: "Escribe qué hay que hacer." };
   if (titulo.length > MAX_TITULO) {
     return { ok: false, error: `El título no puede pasar de ${MAX_TITULO} caracteres.` };
   }
@@ -224,7 +224,7 @@ export function validarTarea(
 
   const vence = typeof entrada.venceAt === "string" ? new Date(entrada.venceAt) : null;
   if (!vence || Number.isNaN(vence.getTime())) {
-    return { ok: false, error: "Elegí para cuándo es." };
+    return { ok: false, error: "Elige para cuándo es." };
   }
 
   const aviso = entrada.avisoMinutos === undefined ? AVISO_POR_OMISION : entrada.avisoMinutos;
@@ -336,7 +336,7 @@ export function textoDeVencimiento(venceAt: string, ahora: Date, zona: string): 
   const vence = new Date(venceAt);
   if (Number.isNaN(vence.getTime())) return "";
 
-  const hora = new Intl.DateTimeFormat("es-AR", {
+  const hora = new Intl.DateTimeFormat("es-PE", {
     timeZone: zona,
     hour: "2-digit",
     minute: "2-digit",
@@ -349,7 +349,7 @@ export function textoDeVencimiento(venceAt: string, ahora: Date, zona: string): 
   if (dia === shiftDayKey(hoy, 1)) return `Mañana ${hora}`;
   if (dia === shiftDayKey(hoy, -1)) return `Ayer ${hora}`;
 
-  const fecha = new Intl.DateTimeFormat("es-AR", {
+  const fecha = new Intl.DateTimeFormat("es-PE", {
     timeZone: zona,
     weekday: "short",
     day: "numeric",

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       return rejected("el token de la URL no coincide con el secreto del webhook de Zernio", receivedHeaders);
     }
     return rejected(
-      "Zernio no mandó firma ni token. Copiá la URL del webhook desde Configuración → Conexiones: ya trae el secreto adentro.",
+      "Zernio no mandó firma ni token. Copia la URL del webhook desde Configuración → Conexiones: ya trae el secreto adentro.",
       receivedHeaders,
     );
   }

@@ -99,7 +99,7 @@ export function citaEnRango(dia: string, filtro: FiltroAgenda): boolean {
   return dia >= desde && dia <= hasta;
 }
 
-const DIA_LARGO = new Intl.DateTimeFormat("es-AR", {
+const DIA_LARGO = new Intl.DateTimeFormat("es-PE", {
   timeZone: "UTC",
   weekday: "long",
   day: "numeric",

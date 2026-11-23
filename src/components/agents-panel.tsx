@@ -421,7 +421,7 @@ function AgentForm({
           <div id={panelId} className="mt-5 border-t border-neutral-100 pt-5 dark:border-white/10">
             {!enabled && (
               <p className="mb-4 rounded-xl bg-neutral-50 px-4 py-3 text-xs leading-5 text-neutral-500 dark:bg-white/[.04]">
-                Con el agente apagado podés seguir editando las instrucciones: se guardan igual y
+                Con el agente apagado puedes seguir editando las instrucciones: se guardan igual y
                 entran en vigencia cuando lo vuelvas a prender.
               </p>
             )}
@@ -465,7 +465,7 @@ function AgentForm({
                     className={`${INPUT_CLASS} mt-2`}
                   />
                   <p className="mt-1 text-xs text-neutral-500">
-                    No se pudo consultar la lista de modelos: revisá que la key de OpenAI esté
+                    No se pudo consultar la lista de modelos: revisa que la key de OpenAI esté
                     cargada en Configuración → Conexiones.
                   </p>
                 </>
@@ -473,7 +473,7 @@ function AgentForm({
             </div>
 
             {/* El recorte por embudo se ofrece recién con el segundo: con uno
-                solo, "contestá en todos" y "contestá en el único" son lo
+                solo, "contesta en todos" y "contesta en el único" son lo
                 mismo, y la casilla sólo agrega una decisión que no existe. */}
             {pipelines.length > 1 && (
               <fieldset className="mt-5">
@@ -648,8 +648,8 @@ function Instrucciones({
 
       <p className="mt-1 text-xs leading-5 text-neutral-500">
         {texto.trim()
-          ? `Es todo lo que el agente de ${CHANNEL_LABELS[channel]} sabe de tu negocio y de cómo tiene que hablar. Si está diciendo algo que hay que frenar ya, apagalo con el interruptor de arriba.`
-          : "Este canal todavía no tiene instrucciones, así que el agente no responde aunque esté prendido. Escribilas acá o empezá con la plantilla y completá lo que está entre corchetes."}
+          ? `Es todo lo que el agente de ${CHANNEL_LABELS[channel]} sabe de tu negocio y de cómo tiene que hablar. Si está diciendo algo que hay que frenar ya, apágalo con el interruptor de arriba.`
+          : "Este canal todavía no tiene instrucciones, así que el agente no responde aunque esté prendido. Escribilas acá o empieza con la plantilla y completa lo que está entre corchetes."}
       </p>
 
       <textarea
@@ -662,7 +662,7 @@ function Instrucciones({
         // cuánto sobra y el botón de guardar espera.
         maxLength={MAX_SYSTEM_PROMPT_CHARS * 2}
         spellCheck
-        placeholder="Ej: Sos el asistente de [tu negocio]. Tu objetivo es…"
+        placeholder="Ej: Eres el asistente de [tu negocio]. Tu objetivo es…"
         className={`${INPUT_CLASS} mt-2 min-h-24 resize-y font-mono text-xs leading-5`}
       />
 
@@ -1146,11 +1146,11 @@ function PromptCounter({ length }: { length: number }) {
         pasado ? "text-red-600 dark:text-red-400" : "text-neutral-500"
       }`}
     >
-      {length.toLocaleString("es-AR")} de {MAX_SYSTEM_PROMPT_CHARS.toLocaleString("es-AR")}{" "}
+      {length.toLocaleString("es-PE")} de {MAX_SYSTEM_PROMPT_CHARS.toLocaleString("es-PE")}{" "}
       caracteres
-      {pasado && ` · sacá ${(length - MAX_SYSTEM_PROMPT_CHARS).toLocaleString("es-AR")} para poder guardar`}
+      {pasado && ` · saca ${(length - MAX_SYSTEM_PROMPT_CHARS).toLocaleString("es-PE")} para poder guardar`}
       {!pasado && pesado &&
-        ` · son unos ${aproxTokens(length).toLocaleString("es-AR")} tokens que se pagan en cada respuesta`}
+        ` · son unos ${aproxTokens(length).toLocaleString("es-PE")} tokens que se pagan en cada respuesta`}
     </p>
   );
 }
@@ -1375,7 +1375,7 @@ function PruebaDeMovimientos({
       }
       if (salida.evaluadas.length === 0) {
         setResultado(
-          "Ninguna regla guardada aplica desde esa columna. Guardá los cambios o revisá el «desde».",
+          "Ninguna regla guardada aplica desde esa columna. Guarda los cambios o revisa el «desde».",
         );
         return;
       }
@@ -1403,7 +1403,7 @@ function PruebaDeMovimientos({
   return (
     <div className="mt-3 rounded-xl bg-neutral-50 p-3 dark:bg-white/5">
       <p className="text-xs text-neutral-500">
-        Pegá una conversación, un mensaje por renglón. Los del equipo empiezan con
+        Pega una conversación, un mensaje por renglón. Los del equipo empiezan con
         «Vendedor:»; el resto se toma como lo que dijo la persona. No se mueve ninguna
         tarjeta: sólo dice qué haría con las reglas ya guardadas.
       </p>
@@ -1423,7 +1423,7 @@ function PruebaDeMovimientos({
         value={conversacion}
         onChange={(event) => setConversacion(event.target.value)}
         rows={4}
-        placeholder={"Hola, vi el anuncio\nVendedor: ¡Hola! ¿A qué te dedicás?\nTengo una inmobiliaria, somos 4"}
+        placeholder={"Hola, vi el anuncio\nVendedor: ¡Hola! ¿A qué te dedicas?\nTengo una inmobiliaria, somos 4"}
         className={`${INPUT_CLASS} mt-2 w-full`}
       />
 
@@ -1438,7 +1438,7 @@ function PruebaDeMovimientos({
         </button>
         {!guardado && (
           <p className="text-xs text-neutral-500">
-            Guardá la configuración del canal antes de probar.
+            Guarda la configuración del canal antes de probar.
           </p>
         )}
       </div>

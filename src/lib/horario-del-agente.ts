@@ -207,7 +207,7 @@ export function errorDeHorario(horario: HorarioDelAgente): string | null {
       // se descarta y sin franjas se contesta todo el día— y eso no se nota
       // hasta que pasa. Para atender de noche hay dos franjas: una hasta las 24
       // y otra desde las 00 del día siguiente, que es lo que ese día es.
-      return `La franja de ${horaEnTexto(franja.desde)} a ${horaEnTexto(franja.hasta)} cierra antes de abrir. Una franja no puede cruzar la medianoche: para atender de noche, cortá a las 24:00 y seguí al día siguiente.`;
+      return `La franja de ${horaEnTexto(franja.desde)} a ${horaEnTexto(franja.hasta)} cierra antes de abrir. Una franja no puede cruzar la medianoche: para atender de noche, corta a las 24:00 y sigue al día siguiente.`;
     }
   }
 
@@ -215,7 +215,7 @@ export function errorDeHorario(horario: HorarioDelAgente): string | null {
   // está el interruptor —que además lo deja dicho en la tarjeta del canal, en vez
   // de esconder "no contesta nunca" adentro de un horario que parece configurado.
   if (horario.excluye && cubreTodo(horario)) {
-    return "Así el agente no contestaría nunca. Si es lo que querés, apagalo con el interruptor de arriba; si no, dejale alguna franja o algún día afuera.";
+    return "Así el agente no contestaría nunca. Si es lo que quieres, apágalo con el interruptor de arriba; si no, déjale alguna franja o algún día afuera.";
   }
 
   // Dos franjas que se pisan no son dos franjas: son una mal cargada. Se
@@ -315,7 +315,7 @@ export function hayAviso(aviso: string | null | undefined): boolean {
 /** Valida el aviso. Devuelve el error listo para mostrar, o null. */
 export function errorDeAviso(aviso: string): string | null {
   if (aviso.length > MAX_AVISO_CHARS) {
-    return `El aviso no puede pasar de ${MAX_AVISO_CHARS} caracteres: sacá ${aviso.length - MAX_AVISO_CHARS}.`;
+    return `El aviso no puede pasar de ${MAX_AVISO_CHARS} caracteres: saca ${aviso.length - MAX_AVISO_CHARS}.`;
   }
   return null;
 }

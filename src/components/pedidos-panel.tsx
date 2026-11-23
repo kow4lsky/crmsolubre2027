@@ -357,7 +357,7 @@ export function PedidosPanel({
             {!cargando && pedidos.length === 0 && (
               <tr>
                 <td colSpan={15} className="px-4 py-12 text-center text-sm text-neutral-500">
-                  {error ? "—" : hayFiltros ? "No hay pedidos con esos filtros." : "Todavía no hay pedidos. Cargá uno o importá tu planilla."}
+                  {error ? "—" : hayFiltros ? "No hay pedidos con esos filtros." : "Todavía no hay pedidos. Carga uno o importa tu planilla."}
                 </td>
               </tr>
             )}
@@ -620,10 +620,10 @@ function DespachoModal({
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(texto);
-      onNotice("Datos copiados. Abrí tu hoja de despacho y pegá con Ctrl + V.");
+      onNotice("Datos copiados. Abre tu hoja de despacho y pega con Ctrl + V.");
     } catch {
       area.current?.select();
-      onNotice("No se pudo copiar solo: el texto quedó marcado, copialo con Ctrl + C.");
+      onNotice("No se pudo copiar solo: el texto quedó marcado, cópialo con Ctrl + C.");
     }
   };
 
@@ -701,7 +701,7 @@ function EtiquetaModal({
       await navigator.clipboard.writeText(texto);
       onNotice("Etiquetas copiadas.");
     } catch {
-      onNotice("No se pudo copiar solo. Seleccioná el texto y copialo con Ctrl + C.");
+      onNotice("No se pudo copiar solo. Selecciona el texto y cópialo con Ctrl + C.");
     }
   };
 

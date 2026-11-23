@@ -57,5 +57,5 @@ test("las instrucciones se pueden guardar hasta el tope, contando sin los espaci
 test("la plantilla entra en el tope y deja a la vista qué completar", () => {
   assert.equal(errorDePrompt(PLANTILLA_DE_INSTRUCCIONES), null);
   assert.match(PLANTILLA_DE_INSTRUCCIONES, /\[NOMBRE DEL NEGOCIO\]/);
-  assert.match(PLANTILLA_DE_INSTRUCCIONES, /# CUÁNDO PASÁS LA CHARLA A UNA PERSONA/);
+  assert.match(PLANTILLA_DE_INSTRUCCIONES, /# CUÁNDO PASAS LA CHARLA A UNA PERSONA/);
 });

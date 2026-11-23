@@ -61,9 +61,9 @@ test("un lapso imposible no se dibuja", () => {
 
 test("el dinero cambia de unidad arriba del millón", () => {
   // El formato viejo cortaba en miles y nada más: un embudo de un millón y
-  // medio se mostraba como "US$ 1500.0k".
-  assert.equal(dineroCompacto(0), "US$ 0");
-  assert.equal(dineroCompacto(999), "US$ 999");
-  assert.equal(dineroCompacto(1500), "US$ 1.5k");
-  assert.equal(dineroCompacto(1_500_000), "US$ 1.5M");
+  // medio se mostraba como "S/ 1500.0k".
+  assert.equal(dineroCompacto(0), "S/ 0");
+  assert.equal(dineroCompacto(999), "S/ 999");
+  assert.equal(dineroCompacto(1500), "S/ 1.5k");
+  assert.equal(dineroCompacto(1_500_000), "S/ 1.5M");
 });

@@ -541,8 +541,8 @@ export function PipelinePanel({
           {opportunities.length === 0 && (
             <div className="mb-4 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:bg-white/[.04]">
               {contacts.length === 0
-                ? "Todavía no hay leads. Cargá un contacto y entra solo a la primera columna."
-                : "Todavía no hay leads en el embudo. Creá una oportunidad o esperá a que entre un mensaje."}
+                ? "Todavía no hay leads. Carga un contacto y entra solo a la primera columna."
+                : "Todavía no hay leads en el embudo. Crea una oportunidad o espera a que entre un mensaje."}
             </div>
           )}
 
@@ -651,7 +651,7 @@ export function PipelinePanel({
                         ))}
                         {items.length === 0 && (
                           <p className="text-xs text-neutral-400">
-                            {active ? "Soltá acá" : filtrando ? "Sin coincidencias" : "Vacío"}
+                            {active ? "Suelta acá" : filtrando ? "Sin coincidencias" : "Vacío"}
                           </p>
                         )}
                       </div>
@@ -693,7 +693,7 @@ export function PipelinePanel({
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-neutral-50 px-4 py-3 dark:bg-white/[.04]">
               <span className="text-sm text-neutral-500">
                 {selected.length === 0
-                  ? "Marcá tarjetas, o el casillero del título para toda una columna."
+                  ? "Marca tarjetas, o el casillero del título para toda una columna."
                   : `${selected.length} ${selected.length === 1 ? "tarjeta seleccionada" : "tarjetas seleccionadas"}`}
               </span>
               {/* Salir de la selección, sólo en el celular: ahí el botón que la
@@ -719,9 +719,9 @@ export function PipelinePanel({
           )}
 
           <p className="mt-4 text-xs text-neutral-400">
-            Arrastrá una tarjeta a otra columna para moverla. Ganado y Perdido
-            quedan siempre a la vista: soltá ahí para cerrar, o tocá para ver qué
-            hay adentro. Desde el celular, abrí la tarjeta y cambiá la etapa
+            Arrastra una tarjeta a otra columna para moverla. Ganado y Perdido
+            quedan siempre a la vista: suelta ahí para cerrar, o toca para ver qué
+            hay adentro. Desde el celular, abre la tarjeta y cambia la etapa
             desde la ficha.
           </p>
         </>
@@ -1014,7 +1014,7 @@ function EmbudoRow({
 
       {esEntrada && (
         <p className="mt-2 text-xs text-neutral-500">
-          Acá caen los leads nuevos. Para cambiarlo, subí otro embudo a este lugar.
+          Acá caen los leads nuevos. Para cambiarlo, sube otro embudo a este lugar.
         </p>
       )}
 
@@ -1391,9 +1391,9 @@ function PinnedStage({
         </p>
         <p className="mt-1 text-xs text-neutral-400">
           {active
-            ? "Soltá acá"
+            ? "Suelta acá"
             : items.length > 0
-              ? "Tocá para ver"
+              ? "Toca para ver"
               : filtering
                 ? "Sin coincidencias"
                 : "Vacío"}
@@ -1754,7 +1754,7 @@ function PipelineEditor({
   return (
     <Modal title={`Columnas de "${pipelineName}"`} onClose={close}>
       <p className="mt-5 text-sm leading-6 text-neutral-500">
-        Renombrá, reordená, agregá o sacá columnas. Tres son fijas y sólo se
+        Renombra, reordena, agrega o saca columnas. Tres son fijas y sólo se
         pueden renombrar: la de entrada, donde caen los leads nuevos, y las de
         ganado y perdido, que alimentan las métricas del panel.
       </p>
@@ -2160,7 +2160,7 @@ function NuevoLeadModal({
           </div>
           <div>
             <label className="block text-sm font-medium" htmlFor="lead-value">
-              Valor (US$)
+              Valor (S/)
             </label>
             <input
               id="lead-value"

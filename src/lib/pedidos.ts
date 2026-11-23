@@ -91,7 +91,7 @@ export const OPCIONES = {
   destino: ["Lima", "Provincia"],
   canal: ["WASAP IA", "WEB", "SHOPIFY", "WASAP EMP", "REDES (Inst,Mess)"],
   envio: ["Express", "Indriver", "Prog.Normal", "Prov.Agencia"],
-  courier: ["Olva", "Shalom", "Marvisur", "Swipe", "Solubre"],
+  courier: ["Olva", "Shalom", "Marvisur", "Swayp", "Solubre"],
   inventario: ["SOLUBRE", "SWAYP"],
   cerradoPor: ["ASESOR", "IA"],
   asesor: [
@@ -338,4 +338,58 @@ export function saleDeInventario(destino: string | null, estado: string): boolea
   const esProvincia = (destino ?? "").trim().toUpperCase().startsWith("PROV");
   if (esProvincia) return estado === "EN TRÁNSITO" || estado === "EN OFICINA" || estado === "ENTREGADO";
   return estado === "ENTREGADO";
+}
+
+/* ------------------------------------------------- inventario y entrega */
+
+/**
+ * Qué envíos corresponden a cada inventario:
+ *   SWAYP   → Express o Prog.Normal, y el courier es siempre Swayp.
+ *   SOLUBRE → Indriver (courier Solubre) o Prov.Agencia (Shalom, Olva o Marvisur).
+ */
+export function enviosPara(inventario: string | null | undefined): string[] {
+  const clave = (inventario ?? "").trim().toUpperCase();
+  if (clave === "SWAYP") return ["Express", "Prog.Normal"];
+  if (clave === "SOLUBRE") return ["Indriver", "Prov.Agencia"];
+  return [];
+}
+
+export type OpcionesDeCourier = {
+  opciones: string[];
+  /** Si el courier sale solo y no se puede cambiar. */
+  fijo: string | null;
+};
+
+export function courierPara(inventario: string | null | undefined, envio: string | null | undefined): OpcionesDeCourier {
+  const clave = (inventario ?? "").trim().toUpperCase();
+  if (clave === "SWAYP") return { opciones: ["Swayp"], fijo: "Swayp" };
+  if (clave === "SOLUBRE") {
+    if (envio === "Indriver") return { opciones: ["Solubre"], fijo: "Solubre" };
+    if (envio === "Prov.Agencia") return { opciones: ["Shalom", "Olva", "Marvisur"], fijo: null };
+  }
+  return { opciones: [], fijo: null };
+}
+
+/**
+ * Deja envío y courier de acuerdo con el inventario: lo que no corresponde se
+ * vacía y el courier fijo se pone solo. Se usa al cambiar inventario o envío.
+ */
+export function ajustarEntrega(datos: { inventario: string; envio: string; courier: string }) {
+  const envio = enviosPara(datos.inventario).includes(datos.envio) ? datos.envio : "";
+  const { opciones, fijo } = courierPara(datos.inventario, envio);
+  const courier = fijo ?? (opciones.includes(datos.courier) ? datos.courier : "");
+  return { inventario: datos.inventario, envio, courier };
+}
+
+/** Qué está mal en la entrega de un pedido, o null si está bien. */
+export function errorDeEntrega(datos: { inventario: string; envio: string; courier: string }): string | null {
+  if (!datos.inventario) return null;
+  if (datos.envio && !enviosPara(datos.inventario).includes(datos.envio)) {
+    return `El envío ${datos.envio} no corresponde al inventario ${datos.inventario}. Elige otro envío.`;
+  }
+  const { opciones } = courierPara(datos.inventario, datos.envio);
+  if (datos.courier && opciones.length && !opciones.includes(datos.courier)) {
+    return `El courier ${datos.courier} no corresponde a ${datos.inventario} con envío ${datos.envio}. Elige otro courier.`;
+  }
+  return null;
 }

@@ -131,12 +131,12 @@ export async function credenciales(
     if (ilegible) {
       return {
         ok: false,
-        error: `Las credenciales guardadas de ${definicion.nombre} no se pueden leer: ¿cambió INTEGRATIONS_ENCRYPTION_KEY? Volvé a cargarlas en Configuración → Conexiones.`,
+        error: `Las credenciales guardadas de ${definicion.nombre} no se pueden leer: ¿cambió INTEGRATIONS_ENCRYPTION_KEY? Vuelve a cargarlas en Configuración → Conexiones.`,
       };
     }
     return {
       ok: false,
-      error: `Falta configurar ${faltan.join(" y ")} de ${definicion.nombre}: cargalo en Configuración → Conexiones.`,
+      error: `Falta configurar ${faltan.join(" y ")} de ${definicion.nombre}: cárgalo en Configuración → Conexiones.`,
     };
   }
 

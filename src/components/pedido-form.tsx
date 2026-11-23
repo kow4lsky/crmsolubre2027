@@ -11,7 +11,11 @@ import {
   ESTADOS,
   OPCIONES,
   OTRA_CANTIDAD,
+  ajustarEntrega,
   cantidadDeLinea,
+  courierPara,
+  enviosPara,
+  errorDeEntrega,
   juntarLineas,
   lineasDe,
   resumenDeProductos,
@@ -132,6 +136,11 @@ export function PedidoForm({
 
   const cambiar = (clave: keyof Campos, valor: string) => setCampos((c) => ({ ...c, [clave]: valor }));
 
+  // Inventario → envío → courier: al cambiar uno, los otros se acomodan solos.
+  const cambiarEntrega = (cambio: { inventario?: string; envio?: string }) =>
+    setCampos((c) => ({ ...c, ...ajustarEntrega({ inventario: c.inventario, envio: c.envio, courier: c.courier, ...cambio }) }));
+  const opcionesDeCourier = courierPara(campos.inventario, campos.envio);
+
   const itemsElegidos = juntarLineas(lineas);
   // Sin productos cargados, un pedido viejo conserva el texto que traía.
   const resumen = itemsElegidos.length ? resumenDeProductos(itemsElegidos) : resumenAnterior;
@@ -159,14 +168,19 @@ export function PedidoForm({
       const linea = lineas[incompleta];
       return setError(
         !linea.producto
-          ? `Elegí el producto del renglón ${incompleta + 1}, o quitalo.`
-          : `Escribí la cantidad de ${linea.producto} (un número entero mayor a cero).`,
+          ? `Elige el producto del renglón ${incompleta + 1}, o quítalo.`
+          : `Escribe la cantidad de ${linea.producto} (un número entero mayor a cero).`,
       );
     }
-    if (!itemsElegidos.length && !resumenAnterior) return setError("Añadí al menos un producto.");
+    if (!itemsElegidos.length && !resumenAnterior) return setError("Añade al menos un producto.");
     if (necesitaPermiso && !motivo.trim()) {
-      return setError("Contá por qué querés cambiar el estado: el administrador lo va a leer para aprobarlo.");
+      return setError("Cuenta por qué quieres cambiar el estado: el administrador lo va a leer para aprobarlo.");
     }
+
+    // El courier fijo se guarda aunque el pedido viniera de la planilla con otro.
+    const courierFinal = opcionesDeCourier.fijo ?? campos.courier;
+    const malEntrega = errorDeEntrega({ inventario: campos.inventario, envio: campos.envio, courier: courierFinal });
+    if (malEntrega) return setError(malEntrega);
 
     const datos: Record<string, unknown> = {
       fecha_registro: campos.fecha_registro || dayKeyInZone(new Date(), timezone),
@@ -183,7 +197,7 @@ export function PedidoForm({
       estado: necesitaPermiso ? estadoOriginal : campos.estado,
       canal: nulo(campos.canal),
       envio: nulo(campos.envio),
-      courier: nulo(campos.courier),
+      courier: nulo(courierFinal),
       costo_envio: numero(campos.costo_envio),
       inventario: nulo(campos.inventario),
       tracking: nulo(campos.tracking),
@@ -308,7 +322,7 @@ export function PedidoForm({
                     onChange={(e) => cambiarLinea(i, { producto: e.target.value })}
                     className={`${INPUT_CLASS} col-span-2 sm:col-span-1`}
                   >
-                    <option value="">Elegí un producto…</option>
+                    <option value="">Elige un producto…</option>
                     {productos
                       .filter(({ nombre }) => nombre === linea.producto || !usados.has(nombre))
                       .map(({ nombre }) => (
@@ -408,20 +422,36 @@ export function PedidoForm({
             {esAdmin || rolVenta === "encargado" ? (
               <Lista valor={campos.asesor} opciones={OPCIONES.asesor} onCambio={(v) => cambiar("asesor", v)} />
             ) : (
-              <input value={campos.asesor || "(vos)"} disabled className={INPUT_CLASS} />
+              <input value={campos.asesor || "(tú)"} disabled className={INPUT_CLASS} />
             )}
           </Campo>
           <Campo etiqueta="Canal">
             <Lista valor={campos.canal} opciones={OPCIONES.canal} onCambio={(v) => cambiar("canal", v)} />
           </Campo>
           <Campo etiqueta="Inventario">
-            <Lista valor={campos.inventario} opciones={OPCIONES.inventario} onCambio={(v) => cambiar("inventario", v)} />
+            <Lista valor={campos.inventario} opciones={OPCIONES.inventario} onCambio={(v) => cambiarEntrega({ inventario: v })} />
           </Campo>
           <Campo etiqueta="Envío">
-            <Lista valor={campos.envio} opciones={OPCIONES.envio} onCambio={(v) => cambiar("envio", v)} />
+            {campos.inventario ? (
+              <Lista valor={campos.envio} opciones={enviosPara(campos.inventario)} onCambio={(v) => cambiarEntrega({ envio: v })} />
+            ) : (
+              <input disabled value="" placeholder="Elige primero el inventario" className={INPUT_CLASS} />
+            )}
           </Campo>
           <Campo etiqueta="Courier">
-            <Lista valor={campos.courier} opciones={OPCIONES.courier} onCambio={(v) => cambiar("courier", v)} />
+            {opcionesDeCourier.fijo ? (
+              // Sale solo y no se cambia: Swayp con SWAYP, Solubre con Indriver.
+              <input disabled value={opcionesDeCourier.fijo} className={`${INPUT_CLASS} font-semibold`} />
+            ) : opcionesDeCourier.opciones.length ? (
+              <Lista valor={campos.courier} opciones={opcionesDeCourier.opciones} onCambio={(v) => cambiar("courier", v)} />
+            ) : (
+              <input
+                disabled
+                value={campos.courier}
+                placeholder={campos.inventario ? "Elige primero el envío" : "Elige primero el inventario"}
+                className={INPUT_CLASS}
+              />
+            )}
           </Campo>
           <Campo etiqueta="Costo de envío (S/)">
             <input inputMode="decimal" value={campos.costo_envio} onChange={(e) => cambiar("costo_envio", e.target.value)} className={INPUT_CLASS} />
@@ -528,7 +558,7 @@ export function PedidoForm({
 
 /** Los errores de la base, dichos para una persona. */
 function traducir(mensaje: string | undefined): string {
-  if (!mensaje) return "No se pudo guardar. Probá de nuevo.";
+  if (!mensaje) return "No se pudo guardar. Prueba de nuevo.";
   if (/duplicate key|pedidos_workspace_id_codigo_key/.test(mensaje)) return "Ya existe un pedido con ese código.";
   return mensaje;
 }

@@ -287,6 +287,8 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
         else fila.extra[titulos[i].trim()] = valor;
       } else if (columna === "celular") fila.celular = leerCelular(valor);
       else if (ALIAS.has(columna)) fila[columna] = leerAlias(valor);
+      // En la planilla vieja Swayp figuraba como "Swipe".
+      else if (columna === "courier") fila.courier = /^swipe$/i.test(valor) ? "Swayp" : valor;
       else fila[columna] = valor;
     });
 

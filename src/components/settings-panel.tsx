@@ -88,7 +88,7 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
             <p className="text-sm text-red-700 dark:text-red-300">{status.message}</p>
             <p className="mt-2 text-sm text-red-700/80 dark:text-red-300/80">
-              Cargá tu key de OpenAI en <strong>Conexiones</strong>, más abajo en esta misma
+              Carga tu key de OpenAI en <strong>Conexiones</strong>, más abajo en esta misma
               pantalla.
             </p>
           </div>
@@ -122,7 +122,7 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
             Un agente sin instrucciones cargadas no responde, aunque esté encendido. Es a propósito.
           </li>
           <li>
-            <strong className="text-neutral-700 dark:text-neutral-300">Poné un límite de gasto</strong>{" "}
+            <strong className="text-neutral-700 dark:text-neutral-300">Pon un límite de gasto</strong>{" "}
             en la cuenta de OpenAI. Es la única protección real contra un consumo inesperado.
           </li>
         </ul>

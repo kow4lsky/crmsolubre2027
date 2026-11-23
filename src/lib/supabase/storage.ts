@@ -110,7 +110,7 @@ export async function uploadVoiceNote(input: Subida): Promise<UploadResult> {
   // El tope del audio tiene su propio aviso: lo que hay que hacer es grabar más
   // corto, no "mandar un archivo más chico".
   if (input.bytes.byteLength > MAX_VOICE_BYTES) {
-    return { ok: false, error: "El audio es demasiado largo. Grabá uno más corto." };
+    return { ok: false, error: "El audio es demasiado largo. Graba uno más corto." };
   }
   return subir(BUCKET_VOZ, input, "el audio");
 }

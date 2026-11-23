@@ -330,7 +330,7 @@ export function InboxView({
         <EmptyState
           icon={Inbox}
           title="Bandeja vacía"
-          description="Cargá un contacto y va a aparecer acá esperando su primer mensaje."
+          description="Carga un contacto y va a aparecer acá esperando su primer mensaje."
         />
       </div>
     );
@@ -561,7 +561,7 @@ export function InboxView({
           <p className="text-sm text-neutral-500">
             {yaNoEsta
               ? "Ese chat ya no está disponible. Puede que lo hayan archivado o reasignado a otra persona."
-              : "Elegí un chat de la lista."}
+              : "Elige un chat de la lista."}
           </p>
           {yaNoEsta && (
             <button
@@ -1083,7 +1083,7 @@ function EditarFicha({
 
       {lead.opportunity && (
         <>
-          <Campo id="ficha-valor" label="Valor (US$)">
+          <Campo id="ficha-valor" label="Valor (S/)">
             <input
               id="ficha-valor"
               type="number"

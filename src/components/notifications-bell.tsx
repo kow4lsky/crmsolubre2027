@@ -349,12 +349,12 @@ export function NotificationsBell({
 
   const pushHelp: Record<PushState, string> = {
     loading: "Comprobando este dispositivo…",
-    off: "Activá los avisos para enterarte aunque el CRM esté cerrado.",
+    off: "Activa los avisos para enterarte aunque el CRM esté cerrado.",
     on: "Este dispositivo recibe avisos aunque el CRM esté cerrado.",
-    denied: "El navegador bloqueó los avisos. Habilitalos desde el candado de la barra.",
-    unsupported: "Este navegador no admite avisos push. En iPhone, agregá el CRM a Inicio.",
+    denied: "El navegador bloqueó los avisos. Habilítalos desde el candado de la barra.",
+    unsupported: "Este navegador no admite avisos push. En iPhone, agrega el CRM a Inicio.",
     unconfigured: "Los avisos push todavía no están configurados en el servidor.",
-    error: pushError || "No se pudo comprobar este dispositivo. Intentá nuevamente.",
+    error: pushError || "No se pudo comprobar este dispositivo. Intenta nuevamente.",
   };
 
   return (

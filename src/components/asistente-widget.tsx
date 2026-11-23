@@ -169,8 +169,8 @@ export function AsistenteWidget() {
             {turnos.length === 0 && (
               <div className="pt-6">
                 <p className="text-sm text-neutral-500">
-                  Preguntame lo que necesites saber del CRM. Consulto los datos en el momento y sólo
-                  veo lo que vos podrías ver.
+                  Pregúntame lo que necesites saber del CRM. Consulto los datos en el momento y sólo
+                  veo lo que tú podrías ver.
                 </p>
                 <div className="mt-4 space-y-2">
                   {EJEMPLOS.map((ejemplo) => (
@@ -215,7 +215,7 @@ export function AsistenteWidget() {
                     preguntar(texto);
                   }
                 }}
-                placeholder="Preguntá algo…"
+                placeholder="Pregunta algo…"
                 aria-label="Tu pregunta"
                 className={`${INPUT_CLASS} max-h-28 resize-none py-2 text-sm`}
               />

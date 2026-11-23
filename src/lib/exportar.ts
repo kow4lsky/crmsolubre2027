@@ -261,7 +261,7 @@ function enZona(valor: string | null | undefined, timeZone: string): string {
   const fecha = new Date(valor);
   if (Number.isNaN(fecha.getTime())) return "";
 
-  const partes = new Intl.DateTimeFormat("es-AR", {
+  const partes = new Intl.DateTimeFormat("es-PE", {
     timeZone,
     year: "numeric",
     month: "2-digit",

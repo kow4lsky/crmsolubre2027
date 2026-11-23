@@ -341,7 +341,7 @@ export function ChatThread({
 
       {!access.can("responder_chats") ? (
         <p className="shrink-0 border-t border-[#ddd8c9] px-5 py-4 text-center text-sm text-neutral-500 dark:border-white/10">
-          Podés leer esta conversación, pero no responderla. Es un permiso que da un administrador.
+          Puedes leer esta conversación, pero no responderla. Es un permiso que da un administrador.
         </p>
       ) : (
         /* En el celular la caja se lleva la primera fila entera y los botones
@@ -373,7 +373,7 @@ export function ChatThread({
                 event.currentTarget.form?.requestSubmit();
               }}
               enterKeyHint="send"
-              placeholder={suggesting ? "Pensando una respuesta…" : "Escribí tu respuesta…"}
+              placeholder={suggesting ? "Pensando una respuesta…" : "Escribe tu respuesta…"}
               disabled={sending}
               className="max-h-32 min-h-16 w-full basis-full resize-none overflow-y-auto rounded-xl border border-[#ddd8c9] bg-[#f9f8f3] px-3 py-2.5 text-base leading-6 outline-none transition focus:ring-2 focus:ring-amber-500 disabled:opacity-60 sm:order-1 sm:min-h-0 sm:basis-auto dark:border-white/10 dark:bg-white/5"
             />
@@ -526,12 +526,12 @@ const DESCRIPCION_LARGA = 140;
  */
 function fechaDelMensaje(value: string) {
   const fecha = new Date(value);
-  const dia = fecha.toLocaleDateString("es-AR", {
+  const dia = fecha.toLocaleDateString("es-PE", {
     day: "numeric",
     month: "short",
     year: fecha.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
   });
-  const hora = fecha.toLocaleTimeString("es-AR", {
+  const hora = fecha.toLocaleTimeString("es-PE", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,

@@ -67,7 +67,7 @@ test("el tope de la imagen es el de la imagen y no el del video", () => {
 test("el video tiene su propio tope y su propio aviso", () => {
   const pasado = revisarAdjunto("video/mp4", MAX_VIDEO_BYTES + 1);
   assert.equal(pasado.ok, false);
-  assert.match(pasado.ok === false ? pasado.error : "", /Recortalo/);
+  assert.match(pasado.ok === false ? pasado.error : "", /Recórtalo/);
 
   // Justo en el tope entra: el límite es "más de", no "a partir de".
   assert.equal(revisarAdjunto("video/mp4", MAX_VIDEO_BYTES).ok, true);

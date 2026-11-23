@@ -142,15 +142,15 @@ type WorkspaceScope =
 async function requireWorkspace(): Promise<WorkspaceScope> {
   const context = await getWorkspaceContext();
   if (context.status === "signed-out") {
-    return { ok: false, error: "Tu sesión venció. Ingresá nuevamente." };
+    return { ok: false, error: "Tu sesión venció. Ingresa nuevamente." };
   }
   if (context.status === "needs-workspace") {
-    return { ok: false, error: "Primero creá tu workspace." };
+    return { ok: false, error: "Primero crea tu workspace." };
   }
   if (context.status === "no-access") {
     return {
       ok: false,
-      error: "Tu mail no tiene acceso al CRM. Pedile a un administrador que te dé de alta.",
+      error: "Tu mail no tiene acceso al CRM. Pídele a un administrador que te dé de alta.",
     };
   }
   if (context.status === "configuration-missing") {
@@ -180,7 +180,7 @@ async function requirePermission(permission: Permission): Promise<WorkspaceScope
   const scope = await requireWorkspace();
   if (!scope.ok) return scope;
   if (!can(scope.role, scope.permissions, permission)) {
-    return { ok: false, error: "No tenés permiso para hacer eso. Pedíselo a un administrador." };
+    return { ok: false, error: "No tienes permiso para hacer eso. Pídeselo a un administrador." };
   }
   return scope;
 }
@@ -300,7 +300,7 @@ async function stageBelongsToWorkspace(
  */
 export async function updateWorkspaceTimezone(input: { timezone: string }): Promise<ActionResult> {
   const timezone = input.timezone?.trim() ?? "";
-  if (!timezone) return { ok: false, error: "Elegí una zona horaria." };
+  if (!timezone) return { ok: false, error: "Elige una zona horaria." };
   // Una zona inválida rompería `Intl` en cada render del resumen, así que no
   // llega a guardarse.
   if (!isValidTimeZone(timezone)) {
@@ -333,7 +333,7 @@ export async function updateWorkspaceTimezone(input: { timezone: string }): Prom
  */
 export async function createPipeline(input: { name: string }): Promise<ActionResult> {
   const name = input.name?.trim() ?? "";
-  if (!name) return { ok: false, error: "Poné un nombre para el embudo." };
+  if (!name) return { ok: false, error: "Pon un nombre para el embudo." };
   if (name.length > MAX_PIPELINE_NAME) {
     return { ok: false, error: `El nombre no puede pasar de ${MAX_PIPELINE_NAME} caracteres.` };
   }
@@ -365,7 +365,7 @@ export async function createPipeline(input: { name: string }): Promise<ActionRes
   if (error) {
     return {
       ok: false,
-      error: error.code === "23505" ? "Ya tenés un embudo con ese nombre." : error.message,
+      error: error.code === "23505" ? "Ya tienes un embudo con ese nombre." : error.message,
     };
   }
   if (!creado) return { ok: false, error: "No se pudo crear el embudo." };
@@ -406,7 +406,7 @@ export async function renamePipeline(input: { id: string; name: string }): Promi
   if (error) {
     return {
       ok: false,
-      error: error.code === "23505" ? "Ya tenés un embudo con ese nombre." : error.message,
+      error: error.code === "23505" ? "Ya tienes un embudo con ese nombre." : error.message,
     };
   }
 
@@ -452,7 +452,7 @@ export async function deletePipeline(input: {
 
   if ((count ?? 0) > 0) {
     if (!input.moveToId || input.moveToId === input.id) {
-      return { ok: false, error: "Elegí a qué embudo pasan los leads que están adentro." };
+      return { ok: false, error: "Elige a qué embudo pasan los leads que están adentro." };
     }
     if (!(pipelines ?? []).some((row) => row.id === input.moveToId)) {
       return { ok: false, error: "El embudo de destino no existe." };
@@ -526,7 +526,7 @@ export async function createStage(input: {
   const name = input.name?.trim() ?? "";
   const kind = input.kind ?? "open";
 
-  if (!name) return { ok: false, error: "Poné un nombre para la columna." };
+  if (!name) return { ok: false, error: "Pon un nombre para la columna." };
   if (name.length > MAX_STAGE_NAME) {
     return { ok: false, error: `El nombre no puede pasar de ${MAX_STAGE_NAME} caracteres.` };
   }
@@ -652,7 +652,7 @@ export async function deleteStage(input: {
 
   if ((count ?? 0) > 0) {
     if (!input.moveToId || input.moveToId === input.id) {
-      return { ok: false, error: "Elegí a qué columna pasan los leads que están adentro." };
+      return { ok: false, error: "Elige a qué columna pasan los leads que están adentro." };
     }
     // El destino tiene que ser del mismo embudo: mover los leads a otro sería
     // cambiarlos de proceso sin que nadie lo haya pedido.
@@ -977,8 +977,8 @@ export async function createOpportunity(input: {
   value: number;
   notes?: string;
 }): Promise<ActionResult> {
-  if (!input.contactId) return { ok: false, error: "Elegí un contacto." };
-  if (!input.stageId) return { ok: false, error: "Elegí una etapa." };
+  if (!input.contactId) return { ok: false, error: "Elige un contacto." };
+  if (!input.stageId) return { ok: false, error: "Elige una etapa." };
   if (!Number.isFinite(input.value) || input.value < 0) {
     return { ok: false, error: "El valor debe ser un número mayor o igual a cero." };
   }
@@ -1041,7 +1041,7 @@ export async function createAppointment(input: {
   enlace?: string;
 }): Promise<ActionResult> {
   const title = input.title?.trim() ?? "";
-  if (!input.contactId) return { ok: false, error: "Elegí un contacto." };
+  if (!input.contactId) return { ok: false, error: "Elige un contacto." };
   if (!title) return { ok: false, error: "El título es obligatorio." };
 
   const enlace = leerEnlace(input.enlace);
@@ -1189,7 +1189,7 @@ export async function listAppointmentsByRange(input: {
 
   const desde = normalizarDia(input.desde);
   const hasta = normalizarDia(input.hasta);
-  if (!desde || !hasta) return { ok: false, error: "Elegí una fecha válida." };
+  if (!desde || !hasta) return { ok: false, error: "Elige una fecha válida." };
   // Un rango dado vuelta es un error de tipeo, no una agenda vacía.
   const [primero, ultimo] = desde <= hasta ? [desde, hasta] : [hasta, desde];
 
@@ -1346,7 +1346,7 @@ export async function sendChatMessage(input: {
   text: string;
 }): Promise<ActionResult> {
   const text = input.text?.trim() ?? "";
-  if (!text) return { ok: false, error: "Escribí un mensaje." };
+  if (!text) return { ok: false, error: "Escribe un mensaje." };
   if (text.length > 4000) return { ok: false, error: "El mensaje es demasiado largo." };
 
   const scope = await requirePermission("responder_chats");
@@ -1444,7 +1444,7 @@ export async function startContactConversation(input: {
   if (!chatId) {
     return {
       ok: false,
-      error: "Este contacto no tiene un teléfono válido para WhatsApp. Corregilo en su ficha.",
+      error: "Este contacto no tiene un teléfono válido para WhatsApp. Corrígelo en su ficha.",
     };
   }
 
@@ -1457,7 +1457,7 @@ export async function startContactConversation(input: {
   });
 
   if (!conversationId) {
-    return { ok: false, error: "No se pudo abrir el chat. Probá de nuevo en un momento." };
+    return { ok: false, error: "No se pudo abrir el chat. Prueba de nuevo en un momento." };
   }
 
   revalidatePath("/");
@@ -1528,7 +1528,7 @@ export async function sendTemplateMessage(input: {
     (p) => p.nombre === input.nombre && p.idioma === input.idioma && p.estado === "APPROVED",
   );
   if (!plantilla) {
-    return { ok: false, error: "Esa plantilla ya no está disponible. Volvé a abrir la lista." };
+    return { ok: false, error: "Esa plantilla ya no está disponible. Vuelve a abrir la lista." };
   }
 
   const valores = input.valores ?? {};
@@ -1627,7 +1627,7 @@ function prepararAudio(
   const crudo = new Uint8Array(Buffer.from(audio ?? "", "base64"));
   if (crudo.byteLength === 0) return { ok: false, error: "La grabación llegó vacía." };
   if (crudo.byteLength > MAX_VOICE_BYTES) {
-    return { ok: false, error: "El audio es demasiado largo. Grabá uno más corto." };
+    return { ok: false, error: "El audio es demasiado largo. Graba uno más corto." };
   }
 
   const convertido = baseMime === "audio/webm" ? webmOpusAOgg(crudo) : null;
@@ -2739,7 +2739,7 @@ export async function probarMovimientoDelAgente(input: {
   if (!CHANNELS.includes(input.channel)) return { ok: false, error: "Canal inválido." };
 
   const conversacion = input.conversacion.trim();
-  if (!conversacion) return { ok: false, error: "Pegá una conversación para probar." };
+  if (!conversacion) return { ok: false, error: "Pega una conversación para probar." };
 
   const scope = await requirePermission("gestionar_agentes");
   if (!scope.ok) return { ok: false, error: scope.error };
@@ -2753,7 +2753,7 @@ export async function probarMovimientoDelAgente(input: {
 
   const fila = config as { id?: string; model_version?: string | null } | null;
   if (!fila?.id) {
-    return { ok: false, error: "Guardá la configuración del agente antes de probar." };
+    return { ok: false, error: "Guarda la configuración del agente antes de probar." };
   }
 
   const { data: etapa } = await scope.supabase
@@ -2985,7 +2985,7 @@ export async function suggestReply(input: {
         // sugerencia es un acto deliberado de alguien del equipo, que la va a
         // leer antes de mandarla. Lo que no puede es salir en blanco.
         ((config?.system_prompt ?? "").trim() ||
-          "Sos quien atiende a los clientes de esta empresa. Respondé en español rioplatense, breve y cordial.") +
+          "Eres quien atiende a los clientes de esta empresa. Responde en español peruano, breve y cordial.") +
         fichaDelLead(related ?? {}) +
         INSTRUCCIONES_DE_ADJUNTOS,
     },
@@ -3070,7 +3070,7 @@ export async function changeOwnPassword(input: { password: string }): Promise<Ac
   const { error } = await scope.supabase.auth.updateUser({ password: input.password });
   if (error) return { ok: false, error: error.message };
 
-  return { ok: true, warning: "Listo, ya podés entrar con la contraseña nueva." };
+  return { ok: true, warning: "Listo, ya puedes entrar con la contraseña nueva." };
 }
 
 export type WorkspaceUser = { userId: string; email: string; role: MemberRole };
@@ -3186,7 +3186,7 @@ export async function exportTable(input: { tabla: TablaExportable }): Promise<Ex
     return { ok: true, ...resultado };
   } catch (error) {
     console.error("[exportar] no se pudo armar el archivo:", error);
-    return { ok: false, error: "No se pudo armar el archivo. Probá de nuevo." };
+    return { ok: false, error: "No se pudo armar el archivo. Prueba de nuevo." };
   }
 }
 
@@ -3423,7 +3423,7 @@ export async function preguntarAlAsistente(input: {
       content: turno.content.trim().slice(0, ASISTENTE_MAX_CHARS),
     }));
 
-  if (mensajes.length === 0) return { ok: false, error: "Escribí una pregunta." };
+  if (mensajes.length === 0) return { ok: false, error: "Escribe una pregunta." };
 
   const config = await leerConfigAsistente(scope.supabase, scope.workspaceId);
   if (!config.enabled) {
@@ -3501,7 +3501,7 @@ export async function saveAssistantConfig(input: AsistenteConfig): Promise<Actio
   if (!scope.ok) return { ok: false, error: scope.error };
 
   const model = input.model?.trim();
-  if (!model) return { ok: false, error: "Elegí un modelo." };
+  if (!model) return { ok: false, error: "Elige un modelo." };
 
   const { error } = await scope.supabase
     .from("workspaces")
@@ -3603,7 +3603,7 @@ export async function createTask(input: DatosDeTarea): Promise<ActionResult> {
   if (paraOtro && !can(scope.role, scope.permissions, "asignar_tareas")) {
     return {
       ok: false,
-      error: "No tenés permiso para darle tareas a otra persona. Pedíselo a un administrador.",
+      error: "No tienes permiso para darle tareas a otra persona. Pídeselo a un administrador.",
     };
   }
 
@@ -3654,7 +3654,7 @@ export async function updateTask(input: DatosDeTarea & { id: string }): Promise<
     .eq("workspace_id", scope.workspaceId)
     .maybeSingle();
 
-  if (!actual) return { ok: false, error: "Esa tarea ya no existe o no la podés ver." };
+  if (!actual) return { ok: false, error: "Esa tarea ya no existe o no la puedes ver." };
 
   const asignadaA =
     input.asignadaA === undefined ? actual.asignada_a : input.asignadaA || scope.userId;
@@ -3666,7 +3666,7 @@ export async function updateTask(input: DatosDeTarea & { id: string }): Promise<
   ) {
     return {
       ok: false,
-      error: "No tenés permiso para darle tareas a otra persona. Pedíselo a un administrador.",
+      error: "No tienes permiso para darle tareas a otra persona. Pídeselo a un administrador.",
     };
   }
 
@@ -3756,7 +3756,7 @@ export async function deleteTask(input: { id: string }): Promise<ActionResult> {
   if (!data?.length) {
     return {
       ok: false,
-      error: "Sólo quien la creó o un administrador puede borrarla. Podés cancelarla.",
+      error: "Sólo quien la creó o un administrador puede borrarla. Puedes cancelarla.",
     };
   }
 
@@ -3822,7 +3822,7 @@ export async function listTasks(input: {
     consulta = consulta.eq("creada_por", scope.userId).neq("asignada_a", scope.userId);
   } else if (input.alcance === "equipo") {
     if (!can(scope.role, scope.permissions, "ver_tareas_del_equipo")) {
-      return { ok: false, error: "No tenés permiso para ver las tareas del equipo." };
+      return { ok: false, error: "No tienes permiso para ver las tareas del equipo." };
     }
     if (input.persona) consulta = consulta.eq("asignada_a", input.persona);
   } else {
@@ -4017,12 +4017,12 @@ export async function guardarMiembroDeVenta(input: {
 }): Promise<ActionResult> {
   const scope = await requireAdmin();
   if (!scope.ok) return { ok: false, error: scope.error };
-  if (!esRolVenta(input.rolVenta)) return { ok: false, error: "Elegí un rol." };
+  if (!esRolVenta(input.rolVenta)) return { ok: false, error: "Elige un rol." };
 
   const alias = (input.alias ?? "").trim().toUpperCase();
   if (alias.length > 30) return { ok: false, error: "El alias puede tener hasta 30 letras." };
   if (input.rolVenta !== "admin" && !alias) {
-    return { ok: false, error: "Ponele un alias: es el nombre con el que figura en los pedidos." };
+    return { ok: false, error: "Ponle un alias: es el nombre con el que figura en los pedidos." };
   }
 
   const { error } = await scope.supabase.rpc("guardar_miembro_de_venta", {
