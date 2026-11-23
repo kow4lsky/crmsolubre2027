@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { avisarLlamadas } from "@/lib/llamadas-server";
 import { avisarTareasVencidas } from "@/lib/tareas-server";
 import { verifyZernioToken } from "@/lib/zernio";
 
@@ -51,11 +52,12 @@ async function correr(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  const tareas = await avisarTareasVencidas(supabase);
+  // Las tareas vencidas y las próximas llamadas de los pedidos: el mismo reloj.
+  const [tareas, llamadas] = await Promise.all([avisarTareasVencidas(supabase), avisarLlamadas(supabase)]);
 
-  console.log("[cron] vuelta:", JSON.stringify({ tareas }));
+  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas }));
 
-  return NextResponse.json({ ok: true, tareas });
+  return NextResponse.json({ ok: true, tareas, llamadas });
 }
 
 // Vercel Cron entra por GET; un `pg_cron` con `pg_net` suele mandar POST.

@@ -49,6 +49,7 @@ import { AgentsPanel } from "@/components/agents-panel";
 import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
+import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
 import { RecordatoriosDeLlamada } from "@/components/recordatorios-llamada";
 import { UsuariosPanel } from "@/components/usuarios-panel";
@@ -197,6 +198,7 @@ export function DashboardApp({
   authError,
   vista,
   chat,
+  pedido = null,
 }: {
   context: WorkspaceContext;
   data: CrmData | null;
@@ -205,6 +207,8 @@ export function DashboardApp({
   vista: string | null;
   /** Chat de un enlace directo, por ejemplo desde una notificación push. */
   chat: string | null;
+  /** Pedido de un enlace directo, por ejemplo desde el aviso de una llamada. */
+  pedido?: string | null;
 }) {
   // Arranca en claro. Se decide acá y no con `prefers-color-scheme` para que
   // el render del servidor y el del navegador coincidan: leer la preferencia
@@ -236,6 +240,7 @@ export function DashboardApp({
           data={data}
           vista={vista}
           chat={chat}
+          pedido={pedido}
           dark={dark}
           onToggleDark={() => setDark(!dark)}
         />
@@ -249,6 +254,7 @@ function Workspace({
   data,
   vista,
   chat,
+  pedido = null,
   dark,
   onToggleDark,
 }: {
@@ -256,6 +262,7 @@ function Workspace({
   data: CrmData;
   vista: string | null;
   chat: string | null;
+  pedido?: string | null;
   dark: boolean;
   onToggleDark: () => void;
 }) {
@@ -264,7 +271,9 @@ function Workspace({
   const esAsesora = context.rolVenta === "asesor" || context.rolVenta === "asesor_temp";
   // Un pedido para abrir desde el aviso de llamada. `vez` hace que abrir dos
   // veces el mismo código lo vuelva a abrir.
-  const [pedidoPorAbrir, setPedidoPorAbrir] = useState<{ codigo: string; vez: number } | null>(null);
+  const [pedidoPorAbrir, setPedidoPorAbrir] = useState<{ codigo: string; vez: number } | null>(() =>
+    pedido ? { codigo: pedido, vez: 0 } : null,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = usePreference(SIDEBAR_COLLAPSED_KEY);
 
@@ -1274,6 +1283,7 @@ function ModuleView({
         {view === "Configuración" && (
           <div className="space-y-8">
             <UsuariosPanel onNotice={onNotice} />
+            <AvisosPushCard />
             <SettingsPanel timezone={data.timezone} />
           </div>
         )}

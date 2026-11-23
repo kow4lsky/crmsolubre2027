@@ -59,6 +59,7 @@ import {
   uploadVoiceNote,
 } from "@/lib/supabase/storage";
 import { errorDeContrasena } from "@/lib/password";
+import { avisosPushConfigurados, generarLlavesVapid } from "@/lib/push-notifications";
 import { esRolVenta, type RolVenta } from "@/lib/pedidos";
 import { esSeccionAsignable, seccionesDe, type SeccionAsignable } from "@/lib/secciones";
 import { getWorkspaceContext } from "@/lib/workspace";
@@ -4208,4 +4209,45 @@ export async function cambiarContrasenaDeMiembro(input: { userId: string; passwo
   const { error } = await getSupabaseAdmin().auth.admin.updateUserById(input.userId, { password: input.password });
   if (error) return { ok: false, error: `No se pudo cambiar: ${error.message}` };
   return { ok: true, warning: "Contraseña cambiada. Pásasela por un medio seguro." };
+}
+
+export type EstadoDeAvisosPush = {
+  /** VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y VAPID_SUBJECT cargadas en Vercel. */
+  llaves: boolean;
+  /** CRON_SECRET cargado en Vercel. */
+  reloj: boolean;
+  /**
+   * Valores nuevos para copiar a Vercel, sólo de lo que falta. Se generan en
+   * cada visita y nunca se guardan acá: el lugar de los secretos es Vercel.
+   */
+  sugeridas: {
+    VAPID_PUBLIC_KEY?: string;
+    VAPID_PRIVATE_KEY?: string;
+    VAPID_SUBJECT?: string;
+    CRON_SECRET?: string;
+  };
+};
+
+/** Qué falta para los avisos push y valores listos para cargarlo. Sólo el admin. */
+export async function prepararAvisosPush(): Promise<
+  { ok: true; estado: EstadoDeAvisosPush } | { ok: false; error: string }
+> {
+  const scope = await requireAdmin("configurar los avisos");
+  if (!scope.ok) return { ok: false, error: scope.error };
+
+  const llaves = avisosPushConfigurados();
+  const reloj = Boolean((process.env.CRON_SECRET ?? "").trim());
+  const sugeridas: EstadoDeAvisosPush["sugeridas"] = {};
+  if (!llaves) {
+    const par = generarLlavesVapid();
+    const { data } = await scope.supabase.auth.getUser();
+    sugeridas.VAPID_PUBLIC_KEY = par.publicKey;
+    sugeridas.VAPID_PRIVATE_KEY = par.privateKey;
+    sugeridas.VAPID_SUBJECT = `mailto:${data.user?.email ?? "avisos@crm.local"}`;
+  }
+  if (!reloj) {
+    const { randomBytes } = await import("node:crypto");
+    sugeridas.CRON_SECRET = randomBytes(24).toString("hex");
+  }
+  return { ok: true, estado: { llaves, reloj, sugeridas } };
 }
