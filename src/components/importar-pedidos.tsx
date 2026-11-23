@@ -136,6 +136,12 @@ export function ImportarPedidos({
                 {desconocidos.map(([estado, n]) => `${estado} (${n})`).join(", ")}
               </li>
             )}
+            {lectura.valoresRaros > 0 && (
+              <li>
+                • {lectura.valoresRaros} montos o cantidades que no parecían reales (por ejemplo, un celular en la columna MONTO): se
+                guardan como &quot;otros datos&quot; del pedido en vez de como número.
+              </li>
+            )}
             <li>• Si un código ya existe en el CRM, se actualiza con lo de la planilla.</li>
           </ul>
           <details className="rounded-xl bg-white p-3 dark:bg-white/5">

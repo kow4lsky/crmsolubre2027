@@ -108,3 +108,22 @@ test("un código repetido no entra, aunque una de sus filas sea vieja", () => {
   assert.equal(lectura.detalleRepetidos.length, 2);
   assert.equal(lectura.detalleRepetidos[0].decision, "No se importa: código repetido");
 });
+
+test("un número absurdo no rompe la importación: va a otros datos", () => {
+  const csv = [
+    "COD,F.REG,CLIENTE,MONTO,ADELANTO,SOLUBRE,CHISGUETE",
+    "WED20,01/11/2026,Ana,948584475123,20,948584475,2",
+    "WED21,01/11/2026,Beto,89.9,,1.5,3",
+  ].join("\n");
+  const lectura = leerPedidos(leerCsv(csv));
+  const [a, b] = lectura.filas;
+  assert.equal(a.monto, undefined);
+  assert.equal(a.extra.MONTO, "948584475123");
+  assert.equal(a.adelanto, 20);
+  assert.deepEqual(a.items, { CHISGUETE: 2 });
+  assert.equal(a.extra.SOLUBRE, "948584475");
+  assert.equal(b.monto, 89.9);
+  assert.deepEqual(b.items, { CHISGUETE: 3 });
+  assert.equal(b.extra.SOLUBRE, "1.5");
+  assert.equal(lectura.valoresRaros, 3);
+});

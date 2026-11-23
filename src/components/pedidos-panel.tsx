@@ -129,28 +129,37 @@ export function PedidosPanel({
     const cargar = async () => {
       setCargando(true);
       setError(null);
-      let consulta = supabase
-        .from("pedidos")
-        .select(COLUMNAS_PEDIDO, { count: "exact" })
-        .eq("workspace_id", workspaceId);
-
       const termino = terminoDeBusqueda(filtros.texto);
-      if (termino) consulta = consulta.ilike("busqueda", `%${termino}%`);
-      if (filtros.desde) consulta = consulta.gte("fecha_registro", filtros.desde);
-      if (filtros.hasta) consulta = consulta.lte("fecha_registro", filtros.hasta);
-      if (filtros.estado) consulta = consulta.eq("estado", filtros.estado);
-      else if (!filtros.verDepurados && !termino) consulta = consulta.neq("estado", "DEPURADO");
-      if (filtros.asesor) consulta = consulta.eq("asesor", filtros.asesor);
-      if (filtros.destino) consulta = consulta.eq("destino", filtros.destino);
-      if (filtros.canal) consulta = consulta.eq("canal", filtros.canal);
-      if (filtros.envio) consulta = consulta.eq("envio", filtros.envio);
-      if (filtros.courier) consulta = consulta.eq("courier", filtros.courier);
-
       const desde = pagina * PEDIDOS_POR_PAGINA;
-      const { data, count, error: falla } = await consulta
-        .order("fecha_registro", { ascending: false })
-        .order("codigo", { ascending: false })
-        .range(desde, desde + PEDIDOS_POR_PAGINA - 1);
+
+      // Se arma de cero en cada intento: el constructor de la consulta acumula
+      // los órdenes, y reusarlo dejaría el orden que falló en el segundo pedido.
+      const ordenada = (porNumero: boolean) => {
+        let consulta = supabase
+          .from("pedidos")
+          .select(COLUMNAS_PEDIDO, { count: "exact" })
+          .eq("workspace_id", workspaceId);
+        if (termino) consulta = consulta.ilike("busqueda", `%${termino}%`);
+        if (filtros.desde) consulta = consulta.gte("fecha_registro", filtros.desde);
+        if (filtros.hasta) consulta = consulta.lte("fecha_registro", filtros.hasta);
+        if (filtros.estado) consulta = consulta.eq("estado", filtros.estado);
+        else if (!filtros.verDepurados && !termino) consulta = consulta.neq("estado", "DEPURADO");
+        if (filtros.asesor) consulta = consulta.eq("asesor", filtros.asesor);
+        if (filtros.destino) consulta = consulta.eq("destino", filtros.destino);
+        if (filtros.canal) consulta = consulta.eq("canal", filtros.canal);
+        if (filtros.envio) consulta = consulta.eq("envio", filtros.envio);
+        if (filtros.courier) consulta = consulta.eq("courier", filtros.courier);
+
+        // El último código creado, arriba (WED7654, WED7653...). Si todavía no
+        // se corrió el SQL que agrega `codigo_num`, se ordena por fecha.
+        const conOrden = porNumero
+          ? consulta.order("codigo_num", { ascending: false, nullsFirst: false }).order("codigo", { ascending: false })
+          : consulta.order("fecha_registro", { ascending: false }).order("codigo", { ascending: false });
+        return conOrden.range(desde, desde + PEDIDOS_POR_PAGINA - 1);
+      };
+      let respuesta = await ordenada(true);
+      if (respuesta.error && /codigo_num/.test(respuesta.error.message)) respuesta = await ordenada(false);
+      const { data, count, error: falla } = respuesta;
 
       if (!vigente) return;
       if (falla) {
