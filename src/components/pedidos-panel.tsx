@@ -314,17 +314,18 @@ export function PedidosPanel({
             Generar etiqueta
           </button>
         )}
-        <button type="button" disabled={!seleccion.size} onClick={exportarSms} className={BOTON_SECUNDARIO}>
-          SMS
-        </button>
+        {/* Asesores: sólo Limpiar selección y los dos despachos. */}
+        {puedeReporte && (
+          <button type="button" disabled={!seleccion.size} onClick={exportarSms} className={BOTON_SECUNDARIO}>
+            SMS
+          </button>
+        )}
         <button type="button" disabled={!seleccion.size} onClick={() => setDespacho("lima")} className={BOTON_SECUNDARIO}>
           Despacho Lima
         </button>
-        {puedeReporte && (
-          <button type="button" disabled={!seleccion.size} onClick={() => setDespacho("provincia")} className={BOTON_SECUNDARIO}>
-            Despacho Provincia
-          </button>
-        )}
+        <button type="button" disabled={!seleccion.size} onClick={() => setDespacho("provincia")} className={BOTON_SECUNDARIO}>
+          Despacho Provincia
+        </button>
         {esAdmin && (
           <button
             type="button"
