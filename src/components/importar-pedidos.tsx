@@ -1,11 +1,12 @@
 "use client";
 
-import { FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
-import { BOTON_SECUNDARIO } from "@/components/pedidos-ui";
+import { BOTON_SECUNDARIO, descargar } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import { leerCsv } from "@/lib/importar";
+import { aCsvExcel } from "@/lib/pedidos";
 import { TANDA_DE_IMPORTACION, leerPedidos, type LecturaDePedidos } from "@/lib/importar-pedidos";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
@@ -104,7 +105,37 @@ export function ImportarPedidos({
           <ul className="space-y-1 text-neutral-600 dark:text-neutral-300">
             {lectura.fueraDeRango > 0 && <li>• {lectura.fueraDeRango.toLocaleString("es-PE")} quedan afuera por la fecha.</li>}
             {lectura.sinCodigo > 0 && <li>• {lectura.sinCodigo} filas sin COD: no se importan.</li>}
-            {lectura.repetidos > 0 && <li>• {lectura.repetidos} códigos repetidos: queda el último.</li>}
+            {lectura.repetidosIguales > 0 && (
+              <li>
+                • {lectura.repetidosIguales} filas repetidas del <b>mismo pedido</b> (mismo celular o cliente): queda una sola, la
+                última, para no contar la entrega dos veces.
+              </li>
+            )}
+            {lectura.repetidosDistintos > 0 && (
+              <li>
+                • {lectura.repetidosDistintos} filas con un código ya usado pero de <b>otro cliente</b>: entran como pedidos aparte,
+                con el código terminado en -2, -3…
+              </li>
+            )}
+            {lectura.detalleRepetidos.length > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() =>
+                    descargar(
+                      "codigos_repetidos.csv",
+                      aCsvExcel([
+                        ["COD", "CLIENTE", "CELULAR", "F.REG", "ESTADO", "MONTO", "ASESOR", "QUÉ HIZO EL CRM"],
+                        ...lectura.detalleRepetidos.map((d) => [d.codigo, d.cliente, d.celular, d.fecha, d.estado, d.monto, d.asesor, d.decision]),
+                      ]),
+                    )
+                  }
+                  className="mt-1 inline-flex cursor-pointer items-center gap-1 font-semibold text-amber-700 hover:underline dark:text-amber-300"
+                >
+                  <Download className="size-4" /> Bajar lista de repetidos para revisarla
+                </button>
+              </li>
+            )}
             {desconocidos.length > 0 && (
               <li>
                 • Estados que no reconocí (entran como VOLVER A LLAMAR y el original se guarda):{" "}

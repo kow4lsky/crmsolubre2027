@@ -194,7 +194,12 @@ export type LecturaDePedidos = {
   /** Títulos que van a `extra`. */
   extras: string[];
   sinCodigo: number;
-  repetidos: number;
+  /** Filas con un código ya visto y el mismo cliente: queda una sola. */
+  repetidosIguales: number;
+  /** Filas con un código ya visto pero otro cliente: entran con código "-2", "-3"... */
+  repetidosDistintos: number;
+  /** Cada fila de un código repetido y qué se hizo con ella. */
+  detalleRepetidos: DetalleRepetido[];
   fueraDeRango: number;
   estadosDesconocidos: Record<string, number>;
   error: string | null;
@@ -206,7 +211,7 @@ export type LecturaDePedidos = {
  */
 export function leerPedidos(filasCsv: string[][], desde: string | null = null): LecturaDePedidos {
   const vacia: LecturaDePedidos = {
-    filas: [], reconocidas: [], extras: [], sinCodigo: 0, repetidos: 0, fueraDeRango: 0,
+    filas: [], reconocidas: [], extras: [], sinCodigo: 0, repetidosIguales: 0, repetidosDistintos: 0, detalleRepetidos: [], fueraDeRango: 0,
     estadosDesconocidos: {}, error: null,
   };
 
@@ -245,6 +250,8 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
   };
 
   const porCodigo = new Map<string, FilaPedido>();
+  // Los códigos repetidos cuya primera fila ya está en la lista para revisar.
+  const anotados = new Set<string>();
 
   for (const celdas of filasCsv.slice(inicio + 1)) {
     const fila: FilaPedido = { codigo: "", items: {}, extra: {} };
@@ -306,12 +313,85 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
       continue;
     }
 
-    if (porCodigo.has(fila.codigo)) lectura.repetidos += 1;
-    porCodigo.set(fila.codigo, fila);
+    if (!porCodigo.has(fila.codigo)) {
+      porCodigo.set(fila.codigo, fila);
+      continue;
+    }
+
+    // El código ya apareció. Si es el mismo cliente, es el mismo pedido cargado
+    // dos veces: queda el último (pagarlo dos veces le sumaría una entrega de
+    // más a la asesora). Si es otro cliente, es otra venta que recibió el mismo
+    // número: entra con un código propio para no perderla.
+    const original = fila.codigo;
+    if (!anotados.has(original)) {
+      lectura.detalleRepetidos.push(detalle(porCodigo.get(original)!, original, "Primera aparición"));
+      anotados.add(original);
+    }
+    let destino: string | null = null;
+    for (let n = 1; ; n += 1) {
+      const candidato = n === 1 ? original : `${original}-${n}`;
+      const existente = porCodigo.get(candidato);
+      if (!existente) break;
+      if (mismoCliente(existente, fila)) {
+        destino = candidato;
+        break;
+      }
+    }
+
+    if (destino) {
+      fila.codigo = destino;
+      if (destino !== original) fila.extra["COD ORIGINAL"] = original;
+      porCodigo.set(destino, fila);
+      lectura.repetidosIguales += 1;
+      lectura.detalleRepetidos.push(detalle(fila, original, `Mismo cliente: reemplaza a la fila anterior de ${destino}`));
+    } else {
+      let n = 2;
+      while (porCodigo.has(`${original}-${n}`)) n += 1;
+      fila.codigo = `${original}-${n}`;
+      fila.extra["COD ORIGINAL"] = original;
+      porCodigo.set(fila.codigo, fila);
+      lectura.repetidosDistintos += 1;
+      lectura.detalleRepetidos.push(detalle(fila, original, `Otro cliente: entra como ${fila.codigo}`));
+    }
   }
 
   lectura.filas = [...porCodigo.values()];
   return lectura;
+}
+
+export type DetalleRepetido = {
+  codigo: string;
+  cliente: string;
+  celular: string;
+  fecha: string;
+  estado: string;
+  monto: string;
+  asesor: string;
+  decision: string;
+};
+
+const sinAcentos = (texto: unknown) => normalizarTitulo(String(texto ?? ""));
+
+/** Mismo celular, o (si alguno no tiene) mismo nombre: es el mismo cliente. */
+export function mismoCliente(a: FilaPedido, b: FilaPedido): boolean {
+  const celA = String(a.celular ?? "");
+  const celB = String(b.celular ?? "");
+  if (celA && celB) return celA === celB;
+  const cliA = sinAcentos(a.cliente);
+  return cliA !== "" && cliA === sinAcentos(b.cliente);
+}
+
+function detalle(fila: FilaPedido, codigo: string, decision: string): DetalleRepetido {
+  return {
+    codigo,
+    cliente: String(fila.cliente ?? ""),
+    celular: String(fila.celular ?? ""),
+    fecha: String(fila.fecha_registro ?? ""),
+    estado: String(fila.estado ?? ""),
+    monto: fila.monto === undefined ? "" : String(fila.monto),
+    asesor: String(fila.asesor ?? ""),
+    decision,
+  };
 }
 
 /** De a cuántos pedidos se mandan a la base. */
