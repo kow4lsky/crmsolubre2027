@@ -55,7 +55,8 @@ test("convierte la planilla en pedidos con productos y otros datos", () => {
   const lectura = leerPedidos(leerCsv(CSV));
   assert.equal(lectura.error, null);
   assert.equal(lectura.filas.length, 3);
-  assert.equal(lectura.repetidos, 1);
+  assert.equal(lectura.repetidosIguales, 1);
+  assert.equal(lectura.repetidosDistintos, 0);
 
   const primero = lectura.filas.find((f) => f.codigo === "WED7649")!;
   assert.equal(primero.fecha_registro, "2026-11-24");
@@ -91,4 +92,29 @@ test("puede importar sólo desde una fecha", () => {
 
 test("avisa si el archivo no es la pestaña base", () => {
   assert.match(leerPedidos(leerCsv("Nombre,Teléfono\nAna,123")).error ?? "", /COD/);
+});
+
+test("un código repetido con otro cliente entra aparte; con el mismo cliente, queda uno", () => {
+  const csv = [
+    "COD,F.REG,CLIENTE,CELULAR,ESTADO,MONTO",
+    "WED10,01/11/2026,Ana,911111111,CONFIRMADO,10",
+    "WED10,02/11/2026,Beto,922222222,CONFIRMADO,20",
+    "WED10,03/11/2026,Ana,911111111,ENTREGADO,10",
+    "WED10,04/11/2026,Beto,922222222,ENTREGADO,20",
+    "WED10,05/11/2026,Caro,,NC,5",
+  ].join("\n");
+  const lectura = leerPedidos(leerCsv(csv));
+  const porCodigo = Object.fromEntries(lectura.filas.map((f) => [f.codigo, f]));
+  assert.deepEqual(Object.keys(porCodigo).sort(), ["WED10", "WED10-2", "WED10-3"]);
+  assert.equal(porCodigo["WED10"].cliente, "Ana");
+  assert.equal(porCodigo["WED10"].estado, "ENTREGADO");
+  assert.equal(porCodigo["WED10-2"].cliente, "Beto");
+  assert.equal(porCodigo["WED10-2"].estado, "ENTREGADO");
+  assert.equal(porCodigo["WED10-2"].extra["COD ORIGINAL"], "WED10");
+  assert.equal(porCodigo["WED10-3"].cliente, "Caro");
+  assert.equal(lectura.repetidosIguales, 2);
+  assert.equal(lectura.repetidosDistintos, 2);
+  // La lista para revisar trae las cinco filas, con lo que se hizo en cada una.
+  assert.equal(lectura.detalleRepetidos.length, 5);
+  assert.equal(lectura.detalleRepetidos[0].decision, "Primera aparición");
 });
