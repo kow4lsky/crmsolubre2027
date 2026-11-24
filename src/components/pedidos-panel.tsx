@@ -10,12 +10,14 @@ import {
   Plus,
   RefreshCw,
   Search,
+  ShoppingBag,
   Trash2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ImportarPedidos } from "@/components/importar-pedidos";
+import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoForm } from "@/components/pedido-form";
 import { BOTON_SECUNDARIO, EstadoChip, descargar } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
@@ -113,6 +115,7 @@ export function PedidosPanel({
   const [verEtiqueta, setVerEtiqueta] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [importando, setImportando] = useState(false);
+  const [importandoShopify, setImportandoShopify] = useState(false);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
   useEffect(() => {
@@ -278,6 +281,12 @@ export function PedidosPanel({
           <button type="button" onClick={() => setImportando(true)} className={`${BOTON_SECUNDARIO} h-11`}>
             <FileSpreadsheet className="size-4" />
             <span className="hidden sm:inline">Importar planilla</span>
+          </button>
+        )}
+        {esAdmin && (
+          <button type="button" onClick={() => setImportandoShopify(true)} className={`${BOTON_SECUNDARIO} h-11`} title="Shopify pendientes del CRM anterior">
+            <ShoppingBag className="size-4" />
+            <span className="hidden sm:inline">Shopify pendientes</span>
           </button>
         )}
         <button type="button" onClick={() => setAbierto("nuevo")} className={`${PRIMARY_BUTTON_CLASS} h-11`}>
@@ -520,6 +529,17 @@ export function PedidosPanel({
             </button>
           </div>
         </Modal>
+      )}
+
+      {importandoShopify && (
+        <ImportarShopify
+          workspaceId={workspaceId}
+          onClose={() => setImportandoShopify(false)}
+          onTerminado={(mensaje) => {
+            onNotice(mensaje);
+            recargar();
+          }}
+        />
       )}
 
       {importando && (
