@@ -53,6 +53,8 @@ export type DiaDeEmpresa = {
   ia_llegaron: number;
   ia_programadas: number;
   ia_descartadas: number;
+  /** Reposiciones y cambios del día: salen del almacén, pero no son venta. */
+  no_ventas?: Record<string, number>;
 };
 
 export type AnaliticaEmpresa = {
@@ -149,6 +151,7 @@ export function totalesDelRango(empresa: AnaliticaEmpresa) {
   let confirmados = 0;
   let entregados = 0;
   let entregadosMonto = 0;
+  const noVentas: Record<string, number> = {};
   for (const d of empresa.dias) {
     registrados += d.registrados;
     registradosMonto += Number(d.registrados_monto) || 0;
@@ -156,6 +159,7 @@ export function totalesDelRango(empresa: AnaliticaEmpresa) {
     entregados += d.entregados;
     entregadosMonto += Number(d.entregados_monto) || 0;
     for (const [quien, n] of Object.entries(d.por_cierre)) porCierre[quien] = (porCierre[quien] ?? 0) + n;
+    for (const [tipo, n] of Object.entries(d.no_ventas ?? {})) noVentas[tipo] = (noVentas[tipo] ?? 0) + n;
   }
-  return { registrados, registradosMonto, confirmados, entregados, entregadosMonto, porCierre };
+  return { registrados, registradosMonto, confirmados, entregados, entregadosMonto, porCierre, noVentas };
 }

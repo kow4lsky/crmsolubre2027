@@ -13,6 +13,7 @@ import {
   ESTADOS_CON_LLAMADA_OBLIGATORIA,
   OPCIONES,
   OTRA_CANTIDAD,
+  TIPOS_DE_PEDIDO,
   aLocalDeLima,
   ajustarEntrega,
   cantidadDeLinea,
@@ -38,7 +39,7 @@ type Campos = Record<
   | "codigo" | "fecha_registro" | "monto" | "cliente" | "direccion" | "dni" | "provincia"
   | "distrito" | "celular" | "destino" | "estado" | "asesor" | "canal" | "envio" | "courier"
   | "costo_envio" | "inventario" | "tracking" | "clave" | "nota" | "adelanto" | "pago_completo"
-  | "prox_llamada" | "cerrado_por" | "asignado_a" | "encargado",
+  | "prox_llamada" | "cerrado_por" | "asignado_a" | "encargado" | "tipo_pedido",
   string
 >;
 
@@ -75,6 +76,7 @@ function camposDe(pedido: Pedido | null, hoy: string): Campos {
         ? `${pedido.prox_llamada}T09:00`
         : "",
     // "Registrado por": un pedido nuevo lo cerró una asesora salvo que venga de la IA.
+    tipo_pedido: pedido?.tipo_pedido ?? "VENTA",
     cerrado_por: pedido ? texto(pedido.cerrado_por) || (pedido.id ? "" : "ASESOR") : "ASESOR",
     asignado_a: texto(pedido?.asignado_a),
     encargado: texto(pedido?.encargado),
@@ -241,6 +243,9 @@ export function PedidoForm({
 
       cerrado_por: nulo(campos.cerrado_por),
     };
+    // Sólo se manda si no es venta o si cambió: así un pedido común se sigue
+    // guardando aunque todavía no se haya corrido el SQL del tipo de pedido.
+    if (campos.tipo_pedido !== (pedido?.tipo_pedido ?? "VENTA")) datos.tipo_pedido = campos.tipo_pedido;
     if (esAdmin || rolVenta === "encargado") {
       datos.asesor = nulo(campos.asesor?.toUpperCase() ?? "");
       datos.asignado_a = nulo(campos.asignado_a.toUpperCase());
@@ -351,6 +356,24 @@ export function PedidoForm({
           </Campo>
           <Campo etiqueta="Monto (S/)">
             <input inputMode="decimal" value={campos.monto} onChange={(e) => cambiar("monto", e.target.value)} className={INPUT_CLASS} />
+          </Campo>
+          <Campo etiqueta="Tipo de pedido">
+            <select
+              value={campos.tipo_pedido}
+              onChange={(e) => cambiar("tipo_pedido", e.target.value)}
+              className={`${INPUT_CLASS} ${campos.tipo_pedido !== "VENTA" ? "border-violet-400! bg-violet-50! dark:bg-violet-400/10!" : ""}`}
+            >
+              {TIPOS_DE_PEDIDO.map((t) => (
+                <option key={t} value={t}>
+                  {t === "VENTA" ? "Venta" : t === "REPOSICIÓN" ? "Reposición" : "Cambio"}
+                </option>
+              ))}
+            </select>
+            {campos.tipo_pedido !== "VENTA" && (
+              <span className="mt-1 block text-xs text-violet-700 dark:text-violet-300">
+                Sale del almacén igual, pero no cuenta como venta ni como entrega de la asesora.
+              </span>
+            )}
           </Campo>
 
         </Seccion>

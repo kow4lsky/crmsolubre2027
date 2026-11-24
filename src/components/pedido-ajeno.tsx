@@ -30,6 +30,7 @@ export function PedidoAjeno({ workspaceId, pedido, onClose }: { workspaceId: str
   }, [supabase, workspaceId, pedido.id]);
 
   const datos: [string, string | number | null | undefined][] = [
+    ["Tipo de pedido", pedido.tipo_pedido && pedido.tipo_pedido !== "VENTA" ? pedido.tipo_pedido : null],
     ["Asesora", pedido.asesor],
     ["Registrado", pedido.fecha_registro],
     ["Cliente", pedido.cliente],

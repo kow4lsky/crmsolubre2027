@@ -32,7 +32,7 @@ const dia = (d: Partial<DiaDeEmpresa>): DiaDeEmpresa => ({
 test("suma el periodo y los anuncios", () => {
   const empresa = {
     dias: [
-      dia({ registrados: 3, registrados_monto: 200, por_cierre: { IA: 1, ASESOR: 2 }, entregados: 1, entregados_monto: 89.9 }),
+      dia({ registrados: 3, registrados_monto: 200, por_cierre: { IA: 1, ASESOR: 2 }, entregados: 1, entregados_monto: 89.9, no_ventas: { "REPOSICIÓN": 2 } }),
       dia({ dia: "2026-11-23", registrados: 2, por_cierre: { IA: 2 }, confirmados: 4,
         flujos: { leads: 10, leads_por_origen: {}, leads_por_anuncio: { Pisos: 6, Madera: 1 }, ventas: 2, ventas_ia: 2, monto: 0, ventas_por_etapa: {}, actualizado_at: "" } }),
     ],
@@ -43,6 +43,7 @@ test("suma el periodo y los anuncios", () => {
   assert.equal(t.registrados, 5);
   assert.deepEqual(t.porCierre, { IA: 3, ASESOR: 2 });
   assert.equal(t.confirmados, 4);
+  assert.deepEqual(t.noVentas, { "REPOSICIÓN": 2 });
   assert.deepEqual(sumarAnuncios(empresa.dias), [["Pisos", 6], ["Madera", 1]]);
 });
 

@@ -351,6 +351,16 @@ function VistaEmpresa({
         <Dato titulo="Entregados en el periodo" valor={t.entregados} detalle={soles(t.entregadosMonto)} />
       </div>
 
+      {Object.keys(t.noVentas).length > 0 && (
+        <p className="text-xs text-neutral-500">
+          No cuentan en estos números (salen del almacén, pero no son venta):{" "}
+          {Object.entries(t.noVentas)
+            .map(([tipo, n]) => `${n} ${tipo === "CAMBIO" ? "cambio(s)" : "reposición(es)"}`)
+            .join(" · ")}
+          .
+        </p>
+      )}
+
       {estados.length > 0 && (
         <section className={TARJETA}>
           <h3 className="font-semibold">Cómo están hoy los {registradosDelRango} registrados del periodo</h3>
