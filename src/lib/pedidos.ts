@@ -107,8 +107,18 @@ export const PEDIDOS_POR_PAGINA = 100;
 export const COLUMNAS_PEDIDO_BASE =
   "id, codigo, fecha_creacion, fecha_registro, monto, pedido, cliente, direccion, dni, provincia, distrito, celular, destino, estado, asesor, canal, envio, courier, costo_envio, inventario, tracking, clave, nota, adelanto, pago_completo, prox_llamada, tipo_cliente, tipo_venta, cerrado_por, comision, creado_por, asignado_a, encargado, fecha_estado, fecha_confirmado, fecha_salida, fecha_entregado, ultima_gestion, estado_etiqueta, fecha_etiqueta, estado_shalom, es_prueba, extra";
 
-/** Con la hora de la próxima llamada (migración 202611290001). */
-export const COLUMNAS_PEDIDO = `${COLUMNAS_PEDIDO_BASE}, prox_llamada_at, guia_swayp, estado_swayp`;
+/** Con la hora de la próxima llamada (migración 202611290001) y Swayp. */
+export const COLUMNAS_PEDIDO_SIN_TIPO = `${COLUMNAS_PEDIDO_BASE}, prox_llamada_at, guia_swayp, estado_swayp`;
+
+/** Con el tipo de pedido (migración 202612050001). */
+export const COLUMNAS_PEDIDO = `${COLUMNAS_PEDIDO_SIN_TIPO}, tipo_pedido`;
+
+/**
+ * VENTA es lo normal. REPOSICIÓN y CAMBIO salen del almacén igual, pero no son
+ * venta: no le suman a la asesora ni entran en la Analítica.
+ */
+export const TIPOS_DE_PEDIDO = ["VENTA", "REPOSICIÓN", "CAMBIO"] as const;
+export type TipoDePedido = (typeof TIPOS_DE_PEDIDO)[number];
 
 /* ------------------------------------------------------------------ tipos */
 
@@ -160,6 +170,8 @@ export type Pedido = {
   fecha_etiqueta: string | null;
   estado_shalom: string | null;
   es_prueba: boolean;
+  /** Falta si todavía no se corrió el SQL 202612050001: se trata como VENTA. */
+  tipo_pedido?: TipoDePedido;
   extra: Record<string, unknown>;
 };
 

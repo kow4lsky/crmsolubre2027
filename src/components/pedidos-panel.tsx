@@ -26,6 +26,7 @@ import { BOTON_SECUNDARIO, EstadoChip, descargar } from "@/components/pedidos-ui
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import {
   COLUMNAS_PEDIDO,
+  COLUMNAS_PEDIDO_SIN_TIPO,
   COLUMNAS_PEDIDO_BASE,
   DESPACHO_LIMA_COLUMNAS,
   DESPACHO_PROVINCIA_COLUMNAS,
@@ -147,6 +148,9 @@ export function PedidosPanel({
     let vigente = true;
     void (async () => {
       let respuesta = await supabase.from("pedidos").select(COLUMNAS_PEDIDO).eq("workspace_id", workspaceId).eq("codigo", abrir.codigo).maybeSingle();
+      if (respuesta.error && /tipo_pedido/.test(respuesta.error.message)) {
+        respuesta = await supabase.from("pedidos").select(COLUMNAS_PEDIDO_SIN_TIPO).eq("workspace_id", workspaceId).eq("codigo", abrir.codigo).maybeSingle();
+      }
       if (respuesta.error) {
         respuesta = await supabase.from("pedidos").select(COLUMNAS_PEDIDO_BASE).eq("workspace_id", workspaceId).eq("codigo", abrir.codigo).maybeSingle();
       }
@@ -192,6 +196,9 @@ export function PedidosPanel({
       };
       // Si falta correr algún SQL reciente, se pide lo que sí existe.
       let respuesta = await ordenada(true, COLUMNAS_PEDIDO);
+      if (respuesta.error && /tipo_pedido/.test(respuesta.error.message)) {
+        respuesta = await ordenada(true, COLUMNAS_PEDIDO_SIN_TIPO);
+      }
       if (respuesta.error && /prox_llamada_at|guia_swayp|estado_swayp|does not exist/.test(respuesta.error.message)) {
         respuesta = await ordenada(true, COLUMNAS_PEDIDO_BASE);
       }
@@ -469,6 +476,11 @@ export function PedidosPanel({
                 <td className="max-w-[220px] px-2 py-2 font-semibold">
                   {p.cliente}
                   {p.es_prueba && <span className="ml-1 rounded bg-neutral-200 px-1 text-[10px] font-normal dark:bg-white/10">prueba</span>}
+                  {p.tipo_pedido && p.tipo_pedido !== "VENTA" && (
+                    <span className="ml-1 rounded bg-violet-100 px-1 text-[10px] font-semibold text-violet-800 dark:bg-violet-400/15 dark:text-violet-200">
+                      {p.tipo_pedido}
+                    </span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.celular || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.dni || "—"}</td>
