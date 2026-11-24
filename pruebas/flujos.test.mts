@@ -108,3 +108,25 @@ test("habla MCP: sesión, respuesta en eventos y texto JSON", async () => {
     servidor.close();
   }
 });
+
+test("si Cloudflare frena al CRM, lo dice claro y sin HTML", async () => {
+  const http = await import("node:http");
+  const { llamarHerramientaMcp } = await import("../src/lib/mcp-cliente.ts");
+  let agente = "";
+  const servidor = http.createServer((req, res) => {
+    agente = String(req.headers["user-agent"]);
+    res.writeHead(403, { "Content-Type": "text/html", "cf-mitigated": "challenge" });
+    res.end('<!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title></head></html>');
+  });
+  await new Promise<void>((r) => servidor.listen(0, r));
+  const puerto = (servidor.address() as { port: number }).port;
+  try {
+    await assert.rejects(
+      llamarHerramientaMcp(`http://127.0.0.1:${puerto}/mcp`, "tok", "orders_list", {}),
+      (e: Error) => e.message.includes("anti-robots") && !e.message.includes("<"),
+    );
+    assert.match(agente, /crm-solubre/);
+  } finally {
+    servidor.close();
+  }
+});

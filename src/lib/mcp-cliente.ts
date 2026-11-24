@@ -14,6 +14,8 @@ export async function llamarHerramientaMcp(url: string, token: string, herramien
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
     Accept: "application/json, text/event-stream",
+    // Sin esto, fetch se presenta como "node" y algunos filtros anti-robots lo frenan.
+    "User-Agent": "crm-solubre/1 (+mcp)",
   };
   let sesion: string | null = null;
   let siguienteId = 1;
@@ -27,7 +29,15 @@ export async function llamarHerramientaMcp(url: string, token: string, herramien
     });
     sesion = respuesta.headers.get("mcp-session-id") ?? sesion;
     if (!respuesta.ok && respuesta.status !== 202) {
-      throw new Error(`Flujos respondió ${respuesta.status}: ${(await respuesta.text()).slice(0, 200)}`);
+      const detalle = await respuesta.text();
+      if (esBloqueoAntiRobots(respuesta.headers, detalle)) {
+        throw new Error(
+          "La protección anti-robots de Flujos (Cloudflare) frenó al CRM antes de llegar a tu cuenta. " +
+            "No es tu token: hay que pedirle a soporte de Flujos que deje pasar las consultas al MCP desde servidores.",
+        );
+      }
+      if (respuesta.status === 401) throw new Error("Flujos no aceptó el token. Renuévalo y vuelve a pegarlo en Conexiones.");
+      throw new Error(`Flujos respondió ${respuesta.status}: ${detalle.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}`);
     }
     if (!("id" in cuerpo)) return null;
     const texto = await respuesta.text();
@@ -67,3 +77,8 @@ export async function llamarHerramientaMcp(url: string, token: string, herramien
   return JSON.parse(texto) as Record<string, unknown>;
 }
 
+
+/** La página "Just a moment..." de Cloudflare: no llega al servidor de Flujos. */
+export function esBloqueoAntiRobots(cabeceras: Headers, cuerpo: string) {
+  return cabeceras.get("cf-mitigated") === "challenge" || /<title>\s*Just a moment/i.test(cuerpo) || /challenge-platform/.test(cuerpo);
+}
