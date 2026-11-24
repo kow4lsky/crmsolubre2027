@@ -4253,6 +4253,23 @@ export async function prepararAvisosPush(): Promise<
 }
 
 /**
+ * "Actualizar Flujos" en la Analítica: recuenta ya los leads y ventas de hoy y
+ * ayer. Sólo el administrador o el encargado.
+ */
+export async function actualizarAnaliticaDeFlujos(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) {
+    return { ok: false, error: "Solo el administrador o el encargado pueden hacerlo." };
+  }
+  const { actualizarFlujosDiario } = await import("@/lib/flujos-server");
+  const resultado = await actualizarFlujosDiario(getSupabaseAdmin(), true);
+  if (!resultado.ok) return { ok: false, error: `No se pudo consultar Flujos: ${resultado.error}` };
+  if (resultado.omitido === "sin conexión") return { ok: false, error: "Falta conectar Flujos en Configuración → Conexiones." };
+  return { ok: true, mensaje: `Flujos al día: ${resultado.revisados} leads contados entre ayer y hoy.` };
+}
+
+/**
  * "Buscar ahora" en Pedidos pendientes: trae de Flujos las ventas nuevas de la
  * IA sin esperar al reloj. Cualquiera del equipo puede pedirlo.
  */

@@ -74,7 +74,8 @@ function camposDe(pedido: Pedido | null, hoy: string): Campos {
       : pedido?.prox_llamada
         ? `${pedido.prox_llamada}T09:00`
         : "",
-    cerrado_por: texto(pedido?.cerrado_por),
+    // "Registrado por": un pedido nuevo lo cerró una asesora salvo que venga de la IA.
+    cerrado_por: pedido ? texto(pedido.cerrado_por) || (pedido.id ? "" : "ASESOR") : "ASESOR",
     asignado_a: texto(pedido?.asignado_a),
     encargado: texto(pedido?.encargado),
   };
@@ -525,7 +526,7 @@ export function PedidoForm({
           <Campo etiqueta="Pago completo">
             <input value={campos.pago_completo} onChange={(e) => cambiar("pago_completo", e.target.value)} className={INPUT_CLASS} />
           </Campo>
-          <Campo etiqueta="Cerrado por">
+          <Campo etiqueta="Registrado por (IA o asesora)">
             <Lista valor={campos.cerrado_por} opciones={OPCIONES.cerradoPor} onCambio={(v) => cambiar("cerrado_por", v)} />
           </Campo>
           {(esAdmin || rolVenta === "encargado") && (
