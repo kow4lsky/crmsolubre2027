@@ -26,6 +26,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Sun,
   Trash2,
   TrendingDown,
@@ -51,6 +52,7 @@ import { AuthGate } from "@/components/auth-gate";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
 import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
+import { PendientesPanel } from "@/components/pendientes-panel";
 import { RecordatoriosDeLlamada } from "@/components/recordatorios-llamada";
 import { UsuariosPanel } from "@/components/usuarios-panel";
 import { BrandMark } from "@/components/brand";
@@ -96,6 +98,7 @@ import type { WorkspaceContext } from "@/lib/workspace";
 
 type View =
   | "Pedidos"
+  | "Pedidos pendientes"
   | "Autorizaciones"
   | "Resumen"
   | "Conversaciones"
@@ -120,6 +123,7 @@ type View =
  */
 const VIEW_SLUGS: Record<View, string> = {
   Pedidos: "pedidos",
+  "Pedidos pendientes": "pendientes",
   Autorizaciones: "autorizaciones",
   Resumen: "resumen",
   Conversaciones: "conversaciones",
@@ -151,6 +155,7 @@ const NAVIGATION: {
   adminOnly?: boolean;
 }[] = [
   { label: "Pedidos", icon: Package },
+  { label: "Pedidos pendientes", icon: Sparkles },
   { label: "Autorizaciones", icon: ShieldCheck },
   { label: "Resumen", icon: LayoutDashboard },
   { label: "Conversaciones", icon: MessageSquareMore },
@@ -509,6 +514,13 @@ function Workspace({
               rolVenta={context.rolVenta}
               onNotice={notify}
               abrir={pedidoPorAbrir}
+            />
+          ) : view === "Pedidos pendientes" ? (
+            <PendientesPanel
+              workspaceId={context.workspaceId}
+              timezone={data.timezone}
+              rolVenta={context.rolVenta}
+              onNotice={notify}
             />
           ) : view === "Autorizaciones" ? (
             <AutorizacionesPanel

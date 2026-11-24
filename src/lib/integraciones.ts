@@ -11,9 +11,9 @@
  * Módulo puro: lo usan el servidor y el panel, y lo prueba el runner de Node.
  */
 
-export type Integracion = "openai" | "ycloud" | "zernio" | "shopify" | "swayp";
+export type Integracion = "openai" | "ycloud" | "zernio" | "shopify" | "swayp" | "flujos";
 
-export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify", "swayp"];
+export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify", "swayp", "flujos"];
 
 export type Campo = {
   clave: string;
@@ -278,6 +278,34 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
       },
     ],
     webhook: { ruta: "/api/webhooks/swayp", donde: "Swayp" },
+  },
+  flujos: {
+    integracion: "flujos",
+    nombre: "Flujos Inteligentes (ventas de la IA)",
+    descripcion:
+      "Cada 5 minutos el CRM trae las ventas que cerró la IA en Flujos y las deja en Pedidos pendientes, para programarlas con un botón.",
+    pasos: [
+      {
+        texto: "En Flujos ve a MCP → pestaña Sin Restricciones → elige cualquier opción (por ejemplo OpenCode) → Renovar token → Copiar token, y pégalo acá.",
+        con: "token",
+      },
+      { texto: "Guarda.", con: "guardar" },
+      {
+        texto: "En Pedidos pendientes toca Buscar ahora: tienen que aparecer las ventas de la IA de los últimos días.",
+      },
+    ],
+    campos: [
+      { clave: "token", etiqueta: "Token sin restricciones", secreto: true, requerido: true, env: "FLUJOS_MCP_TOKEN" },
+      {
+        clave: "url",
+        etiqueta: "URL del servidor MCP",
+        secreto: false,
+        requerido: false,
+        env: "FLUJOS_MCP_URL",
+        porDefecto: "https://api.flujosinteligentes.com/functions/v1/mcp-server/v1/unrestricted",
+        formato: "url",
+      },
+    ],
   },
 };
 

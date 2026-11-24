@@ -466,3 +466,22 @@ export function fechaYHoraDeLima(momento: string | null | undefined): string {
 export function urlDeSeguimientoSwayp(guia: string): string {
   return `https://www.swayp.co/tracking/${encodeURIComponent(guia)}`;
 }
+
+/* ------------------------------------------------ productos de afuera */
+
+const normalizarNombre = (valor: string) =>
+  valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9Ñ]+/g, " ")
+    .trim();
+
+/** El producto del catálogo que nombra un título de afuera (Shopify, Flujos) ("Solubre Limpieza para Pisos" → SOLUBRE). */
+export function productoDelCatalogo(titulo: string, catalogo: string[]): string | null {
+  const t = ` ${normalizarNombre(titulo)} `;
+  const candidatos = catalogo.filter((nombre) => t.includes(` ${normalizarNombre(nombre)} `));
+  // Si coinciden varios, el más largo: "CEPILLO DOBLE NEGRO" antes que "CEPILLO".
+  return candidatos.sort((a, b) => b.length - a.length)[0] ?? null;
+}
+
