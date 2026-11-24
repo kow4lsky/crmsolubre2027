@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ImportarPedidos } from "@/components/importar-pedidos";
+import { EnvioShalom } from "@/components/envio-shalom";
 import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoAjeno } from "@/components/pedido-ajeno";
 import { PedidoForm } from "@/components/pedido-form";
@@ -120,6 +121,7 @@ export function PedidosPanel({
   // Al buscar: los pedidos de otras asesoras que coinciden, sólo para ver.
   const [ajenos, setAjenos] = useState<Pedido[]>([]);
   const [verAjeno, setVerAjeno] = useState<Pedido | null>(null);
+  const [verShalom, setVerShalom] = useState(false);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
   useEffect(() => {
@@ -386,6 +388,11 @@ export function PedidosPanel({
         <button type="button" disabled={!seleccion.size} onClick={() => setDespacho("provincia")} className={BOTON_SECUNDARIO}>
           Despacho Provincia
         </button>
+        {puedeReporte && (
+          <button type="button" disabled={!seleccion.size} onClick={() => setVerShalom(true)} className={BOTON_SECUNDARIO}>
+            Archivo para Shalom
+          </button>
+        )}
         {esAdmin && (
           <button
             type="button"
@@ -527,6 +534,8 @@ export function PedidosPanel({
           </div>
         </section>
       )}
+
+      {verShalom && <EnvioShalom pedidos={seleccionados} onClose={() => setVerShalom(false)} onNotice={onNotice} />}
 
       {verAjeno && <PedidoAjeno workspaceId={workspaceId} pedido={verAjeno} onClose={() => setVerAjeno(null)} />}
 
