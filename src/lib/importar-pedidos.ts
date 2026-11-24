@@ -375,3 +375,51 @@ export const MAXIMA_CANTIDAD = 1000;
 
 /** De a cuántos pedidos se mandan a la base. */
 export const TANDA_DE_IMPORTACION = 400;
+
+/* --------------------------------------- lo que ya está en el CRM */
+
+/** Un pedido que ya está en el CRM, lo justo para compararlo. */
+export type Existente = {
+  codigo: string;
+  cliente: string;
+  celular: string | null;
+  fecha_registro: string;
+  estado: string;
+  monto: number | null;
+};
+
+/** Una fila del archivo que se parece a algo que ya está en el CRM. */
+export type Coincidencia = {
+  fila: FilaPedido;
+  /** Ya hay un pedido con ese código: importarla lo reemplaza. */
+  porCodigo: Existente | null;
+  /** Pedidos con el mismo celular (otro código): repetido o recompra. */
+  porCelular: Existente[];
+};
+
+/** Las filas del archivo que coinciden por código o por celular con pedidos del CRM. */
+export function buscarCoincidencias(filas: FilaPedido[], existentes: Existente[]): Coincidencia[] {
+  const porCodigo = new Map(existentes.map((e) => [e.codigo, e]));
+  const porCelular = new Map<string, Existente[]>();
+  for (const e of existentes) {
+    if (!e.celular) continue;
+    porCelular.set(e.celular, [...(porCelular.get(e.celular) ?? []), e]);
+  }
+  const resultado: Coincidencia[] = [];
+  for (const fila of filas) {
+    const celular = typeof fila.celular === "string" ? fila.celular : "";
+    const mismoCodigo = porCodigo.get(fila.codigo) ?? null;
+    const mismoCelular = (porCelular.get(celular) ?? []).filter((e) => e.codigo !== fila.codigo);
+    if (mismoCodigo || mismoCelular.length) resultado.push({ fila, porCodigo: mismoCodigo, porCelular: mismoCelular });
+  }
+  return resultado;
+}
+
+/**
+ * Lo que se importa: todo lo que no coincide con nada, más las coincidencias
+ * que la persona eligió importar igual (por código).
+ */
+export function filasAImportar(filas: FilaPedido[], coincidencias: Coincidencia[], incluir: Set<string>): FilaPedido[] {
+  const dudosas = new Set(coincidencias.map((c) => c.fila.codigo));
+  return filas.filter((f) => !dudosas.has(f.codigo) || incluir.has(f.codigo));
+}

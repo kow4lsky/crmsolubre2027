@@ -96,6 +96,7 @@ export function PedidoForm({
   timezone,
   rolVenta,
   pedido,
+  inicial = null,
   onClose,
   onSaved,
 }: {
@@ -103,13 +104,18 @@ export function PedidoForm({
   timezone: string;
   rolVenta: RolVenta;
   pedido: Pedido | null;
+  /** Para un pedido nuevo: datos que ya vienen completados (un pendiente de Flujos). */
+  inicial?: (Partial<Pedido> & { items?: PedidoItem[] }) | null;
   onClose: () => void;
-  onSaved: (mensaje: string) => void;
+  /** Con el pedido guardado, para quien necesite vincularlo (Pedidos pendientes). */
+  onSaved: (mensaje: string, guardado?: { id: string; codigo: string }) => void;
 }) {
   const supabase = getSupabaseBrowser();
   const esAdmin = rolVenta === "admin";
   const nuevo = pedido === null;
-  const [campos, setCampos] = useState<Campos>(() => camposDe(pedido, dayKeyInZone(new Date(), timezone)));
+  const [campos, setCampos] = useState<Campos>(() =>
+    camposDe(pedido ?? ((inicial ?? null) as Pedido | null), dayKeyInZone(new Date(), timezone)),
+  );
   const [productos, setProductos] = useState<Producto[]>([]);
   const [lineas, setLineas] = useState<LineaDeProducto[]>([]);
   // Los pedidos de la planilla vieja pueden traer sólo el texto, sin productos.
@@ -140,10 +146,11 @@ export function PedidoForm({
       const cargados = (items.data ?? []) as PedidoItem[];
       for (const item of cargados) nombres.add(item.producto);
       setProductos([...nombres].map((nombre) => ({ nombre })));
-      setLineas(lineasDe(cargados));
+      // Un pedido nuevo que viene completado trae sus productos.
+      setLineas(lineasDe(pedido ? cargados : (inicial?.items ?? [])));
       setHistorial((movimientos.data ?? []) as Movimiento[]);
     })();
-  }, [supabase, workspaceId, pedido]);
+  }, [supabase, workspaceId, pedido, inicial]);
 
   const cambiar = (clave: keyof Campos, valor: string) => setCampos((c) => ({ ...c, [clave]: valor }));
 
@@ -304,11 +311,14 @@ export function PedidoForm({
       });
       setGuardando(false);
       if (falla) return setError(`Se guardaron los cambios, pero no la solicitud: ${falla.message}`);
-      return onSaved(`Pedido ${codigo} guardado. El cambio a ${campos.estado} quedó esperando la aprobación del administrador.`);
+      return onSaved(
+        `Pedido ${codigo} guardado. El cambio a ${campos.estado} quedó esperando la aprobación del administrador.`,
+        { id, codigo },
+      );
     }
 
     setGuardando(false);
-    onSaved(nuevo ? `Pedido ${codigo} creado.` : `Pedido ${codigo} guardado.`);
+    onSaved(nuevo ? `Pedido ${codigo} creado.` : `Pedido ${codigo} guardado.`, id ? { id, codigo } : undefined);
   };
 
   const extras = Object.entries(pedido?.extra ?? {}).filter(([, v]) => v !== null && v !== "");

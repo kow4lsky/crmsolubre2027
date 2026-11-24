@@ -127,3 +127,21 @@ test("un número absurdo no rompe la importación: va a otros datos", () => {
   assert.equal(b.extra.SOLUBRE, "1.5");
   assert.equal(lectura.valoresRaros, 3);
 });
+
+test("muestra lo que ya está en el CRM por código o por celular, y se elige qué importar", async () => {
+  const { buscarCoincidencias, filasAImportar } = await import("../src/lib/importar-pedidos.ts");
+  const fila = (codigo: string, celular: string) => ({ codigo, celular, items: {}, extra: {} });
+  const filas = [fila("WED7664", "911111111"), fila("WED7665", "922222222"), fila("WED7666", "933333333")];
+  const existentes = [
+    { codigo: "WED7600", cliente: "Ana", celular: "911111111", fecha_registro: "2026-11-01", estado: "ENTREGADO", monto: 10 },
+    { codigo: "WED7665", cliente: "Beto", celular: "900000000", fecha_registro: "2026-11-20", estado: "CONFIRMADO", monto: 20 },
+  ];
+  const c = buscarCoincidencias(filas, existentes);
+  assert.deepEqual(c.map((x) => [x.fila.codigo, x.porCodigo?.codigo ?? null, x.porCelular.map((e) => e.codigo)]), [
+    ["WED7664", null, ["WED7600"]],
+    ["WED7665", "WED7665", []],
+  ]);
+  // Por defecto las dudosas no entran; la que se marca, sí.
+  assert.deepEqual(filasAImportar(filas, c, new Set()).map((f) => f.codigo), ["WED7666"]);
+  assert.deepEqual(filasAImportar(filas, c, new Set(["WED7664"])).map((f) => f.codigo), ["WED7664", "WED7666"]);
+});

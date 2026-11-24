@@ -4251,3 +4251,27 @@ export async function prepararAvisosPush(): Promise<
   }
   return { ok: true, estado: { llaves, reloj, sugeridas } };
 }
+
+/**
+ * "Buscar ahora" en Pedidos pendientes: trae de Flujos las ventas nuevas de la
+ * IA sin esperar al reloj. Cualquiera del equipo puede pedirlo.
+ */
+export async function buscarPedidosDeFlujos(): Promise<
+  { ok: true; nuevos: number; mensaje: string } | { ok: false; error: string }
+> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  const { sincronizarFlujos } = await import("@/lib/flujos-server");
+  const resultado = await sincronizarFlujos(getSupabaseAdmin(), true);
+  if (!resultado.ok) return { ok: false, error: `No se pudo consultar Flujos: ${resultado.error}` };
+  if (resultado.omitido === "sin conexión") {
+    return { ok: false, error: "Falta conectar Flujos en Configuración → Conexiones." };
+  }
+  return {
+    ok: true,
+    nuevos: resultado.nuevos,
+    mensaje: resultado.nuevos
+      ? `Llegaron ${resultado.nuevos} venta(s) nuevas de la IA.`
+      : `Sin ventas nuevas de la IA (se revisaron ${resultado.revisados} pedidos de Flujos).`,
+  };
+}

@@ -9,6 +9,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { dayKeyInZone } from "./fechas.ts";
+import { productoDelCatalogo } from "./pedidos.ts";
+
+export { productoDelCatalogo };
 
 /** Tienda y landing entran con el mismo canal; el origen queda en extra. */
 export const CANAL_SHOPIFY = "SHOPIFY";
@@ -84,14 +87,6 @@ export function esDeLanding(pedido: PedidoShopify, marca: string): boolean {
     .join(" ")
     .toLowerCase();
   return donde.includes(buscada);
-}
-
-/** El producto del catálogo que nombra un título de Shopify ("Solubre Limpieza para Pisos" → SOLUBRE). */
-export function productoDelCatalogo(titulo: string, catalogo: string[]): string | null {
-  const t = ` ${normalizar(titulo)} `;
-  const candidatos = catalogo.filter((nombre) => t.includes(` ${normalizar(nombre)} `));
-  // Si coinciden varios, el más largo: "CEPILLO DOBLE NEGRO" antes que "CEPILLO".
-  return candidatos.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
 function atributo(pedido: PedidoShopify, patron: RegExp): string {
