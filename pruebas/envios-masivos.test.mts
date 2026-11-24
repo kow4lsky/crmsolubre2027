@@ -62,3 +62,56 @@ test("llena la plantilla real de Shalom desde la fila 2", async () => {
   // Sigue siendo un XML que abre: mismas filas que antes.
   assert.equal((llena.match(/<row /g) ?? []).length, (hoja.match(/<row /g) ?? []).length);
 });
+
+/* ------------------------------------------------------------------ Olva */
+
+import { llenarHojaOlva, partirNombre, problemasDeFilaOlva, sugerirTiendaOlva } from "../src/lib/envios-masivos.ts";
+import { TIENDAS_OLVA } from "../src/lib/tiendas-olva.ts";
+
+test("parte el nombre en nombres y apellido paterno", () => {
+  assert.deepEqual(partirNombre("Benjamin Israel Juárez Rodriguez"), { nombres: "Benjamin Israel", apellido: "Juárez" });
+  assert.deepEqual(partirNombre("Jhony Peña"), { nombres: "Jhony", apellido: "Peña" });
+  assert.deepEqual(partirNombre("Rosa Mendoza Ruiz"), { nombres: "Rosa", apellido: "Mendoza" });
+  assert.deepEqual(partirNombre("HERNAN"), { nombres: "HERNAN", apellido: "HERNAN" });
+});
+
+test("reconoce la tienda Olva por distrito y calle", () => {
+  const abancay = sugerirTiendaOlva("Olva Abancay av Elias", TIENDAS_OLVA);
+  assert.equal(abancay.tienda?.distrito, "ABANCAY");
+  assert.equal(abancay.segura, true);
+  const parra = sugerirTiendaOlva("tienda olva av parra arequipa", TIENDAS_OLVA);
+  assert.match(parra.tienda?.tienda ?? "", /PARRA/);
+  assert.equal(sugerirTiendaOlva("Calle sin nombre", TIENDAS_OLVA).tienda, null);
+});
+
+test("avisa lo que falta para Olva", () => {
+  const tienda = TIENDAS_OLVA[0];
+  assert.deepEqual(problemasDeFilaOlva({ documento: "08419937", nombres: "Ana", apellido: "Pérez", telefono: "948584475", tienda }), []);
+  assert.deepEqual(problemasDeFilaOlva({ documento: "123", nombres: "", apellido: "", telefono: "1", tienda: null }), [
+    "DNI de 8 dígitos",
+    "nombres y apellido",
+    "celular de 9 dígitos",
+    "tienda Olva de destino",
+  ]);
+});
+
+test("llena la plantilla real de Olva desde la fila 5, con el DNI como texto", async () => {
+  const zip = await JSZip.loadAsync(await readFile("public/plantillas/olva-masivo.xlsm"));
+  const hoja = await zip.file("xl/worksheets/sheet1.xml")!.async("string");
+  const tienda = TIENDAS_OLVA.find((t) => t.distrito === "ABANCAY")!;
+  const llena = llenarHojaOlva(hoja, [{ documento: "08419937", nombres: "Ana María", apellido: "Pérez", telefono: "948584475", tienda }]);
+  const f5 = /<row r="5"[^>]*>[\s\S]*?<\/row>/.exec(llena)![0];
+  assert.match(f5, /<c r="A5" s="4" t="n"><v>1<\/v><\/c>/); // el N° de la plantilla queda
+  assert.match(f5, /<c r="C5" s="5" t="inlineStr"><is><t>08419937<\/t><\/is><\/c>/);
+  assert.match(f5, /<t>Ana María<\/t>/);
+  assert.match(f5, /<c r="J5" s="4" t="inlineStr"><is><t>Entrega en tienda<\/t>/);
+  assert.match(f5, /<t>APURIMAC<\/t>/);
+  assert.match(f5, /<t>TIENDA ABANCAY - AV ELIAS/);
+  assert.match(f5, /<t>Paquete S<\/t>/);
+  assert.match(f5, /<c r="R5" s="4"><v>30<\/v><\/c>/);
+  assert.match(f5, /<t>ARTÍCULOS DE LIMPIEZA<\/t>/);
+  assert.match(f5, /<c r="W5" s="4"><v>50<\/v><\/c>/);
+  assert.match(f5, /<c r="Y5" s="4" t="inlineStr"><is><t>NO<\/t><\/is><\/c>/); // cargo adjunto: lo de la plantilla
+  assert.match(f5, /<c r="AA5"><f>/); // las fórmulas de Olva siguen
+  assert.match(/<row r="6"[^>]*>[\s\S]*?<\/row>/.exec(llena)![0], /<c r="B6" s="\d+" t="n" \/>/);
+});

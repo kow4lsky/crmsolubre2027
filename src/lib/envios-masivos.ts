@@ -1,6 +1,6 @@
 /**
- * Registro masivo de envíos a provincia: arma, desde los pedidos del CRM, la
- * plantilla Excel que Shalom acepta en su "registro masivo".
+ * Registro masivo de envíos a provincia: arma, desde los pedidos del CRM, las
+ * plantillas Excel que Shalom y Olva aceptan en su carga masiva.
  *
  * Las reglas son las mismas que se usaban a mano:
  *   - caja: se cuentan sólo los productos principales (SOLUBRE, LIMPIAXPRESS,
@@ -12,6 +12,7 @@
  */
 
 import { ORIGEN_SHALOM } from "./agencias-shalom.ts";
+import type { TiendaOlva } from "./tiendas-olva.ts";
 
 export const PRODUCTOS_PRINCIPALES = ["SOLUBRE", "LIMPIAXPRESS", "MILDREW"];
 
@@ -161,7 +162,8 @@ export function llenarHojaShalom(hojaXml: string, filas: FilaShalom[]): string {
     const doc = fila.documento.replace(/\D/g, "");
     const tel = fila.telefono.replace(/\D/g, "");
     const valores: Record<string, string | number | null> = {
-      A: doc ? Number(doc) : null,
+      // Un DNI que empieza con 0 va como texto: como número perdería el 0.
+      A: doc ? (doc.startsWith("0") ? doc : Number(doc)) : null,
       B: tel ? Number(tel) : null,
       C: null,
       D: null,
@@ -180,5 +182,121 @@ export function llenarHojaShalom(hojaXml: string, filas: FilaShalom[]): string {
     xml = xml.replace(patronFila, nueva);
   });
 
+  return xml;
+}
+
+/* ------------------------------------------------------------------ Olva */
+
+/** Lo fijo de cada envío Olva: siempre Paquete S, artículos de limpieza, S/ 50, sin seguro. */
+export const OLVA_FIJO = {
+  tipoDocumento: "DNI",
+  tipoEntrega: "Entrega en tienda",
+  paquete: "Paquete S",
+  // Las medidas de "Paquete S" en la plantilla (largo, ancho, alto en cm; peso en kg).
+  largo: 30,
+  ancho: 25,
+  alto: 16,
+  peso: 2,
+  articulo: "ARTÍCULOS DE LIMPIEZA",
+  valor: 50,
+  seguro: "NO",
+};
+
+/** "Benjamin Israel Juárez Rodriguez" → nombres "Benjamin Israel", apellido paterno "Juárez". */
+export function partirNombre(cliente: string): { nombres: string; apellido: string } {
+  const partes = cliente.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return { nombres: "", apellido: "" };
+  if (partes.length === 1) return { nombres: partes[0], apellido: partes[0] };
+  if (partes.length === 2) return { nombres: partes[0], apellido: partes[1] };
+  if (partes.length === 3) return { nombres: partes[0], apellido: partes[1] };
+  return { nombres: partes.slice(0, partes.length - 2).join(" "), apellido: partes[partes.length - 2] };
+}
+
+export const etiquetaDeTienda = (t: TiendaOlva) => `${t.provincia} / ${t.distrito} · ${t.tienda.split(" | ")[0]}`;
+
+export type SugerenciaOlva = { tienda: TiendaOlva | null; segura: boolean; candidatas: TiendaOlva[] };
+
+/**
+ * La tienda Olva que corresponde a la dirección (y el distrito/provincia) del
+ * pedido. Pesa más que coincida el distrito y la provincia; las palabras de
+ * la calle de la tienda desempatan.
+ */
+export function sugerirTiendaOlva(texto: string, tiendas: readonly TiendaOlva[]): SugerenciaOlva {
+  const delPedido = new Set(palabras(texto));
+  const frase = ` ${normalizar(texto)} `;
+  const contiene = (lugar: string) => {
+    const suyas = palabras(lugar);
+    return suyas.length > 0 && frase.includes(` ${suyas.join(" ")} `);
+  };
+  const puntajes = tiendas
+    .map((t) => {
+      const calle = palabras(t.tienda.split(" | ")[0]).filter((p) => !palabras(`${t.provincia} ${t.distrito}`).includes(p));
+      const deCalle = calle.filter((p) => delPedido.has(p)).length;
+      const puntaje = (contiene(t.distrito) ? 3 : 0) + (contiene(t.provincia) ? 2 : 0) + (contiene(t.departamento) ? 1 : 0) + deCalle;
+      return { t, puntaje, deCalle, lugar: contiene(t.distrito) || contiene(t.provincia) };
+    })
+    .filter((x) => x.puntaje > 0)
+    .sort((a, b) => b.puntaje - a.puntaje || b.deCalle - a.deCalle);
+  const mejor = puntajes[0];
+  const empatados = puntajes.filter((x) => mejor && x.puntaje === mejor.puntaje);
+  const propuesta = mejor && mejor.lugar && empatados.length === 1 ? mejor : null;
+  return {
+    tienda: propuesta?.t ?? null,
+    // Segura: coincide el lugar y además algo de la calle de la tienda.
+    segura: !!propuesta && propuesta.deCalle > 0,
+    candidatas: puntajes.slice(0, 6).map((x) => x.t),
+  };
+}
+
+export type FilaOlva = { documento: string; nombres: string; apellido: string; telefono: string; tienda: TiendaOlva | null };
+
+export function problemasDeFilaOlva(fila: FilaOlva): string[] {
+  const problemas: string[] = [];
+  if (!/^\d{8}$/.test(fila.documento.replace(/\D/g, ""))) problemas.push("DNI de 8 dígitos");
+  if (!fila.nombres.trim() || !fila.apellido.trim()) problemas.push("nombres y apellido");
+  if (!/^9\d{8}$/.test(fila.telefono.replace(/\D/g, ""))) problemas.push("celular de 9 dígitos");
+  if (!fila.tienda) problemas.push("tienda Olva de destino");
+  return problemas;
+}
+
+const PRIMERA_FILA_OLVA = 5;
+export const MAXIMO_DE_FILAS_OLVA = 100;
+
+/** La hoja de envíos de la plantilla de Olva con los envíos desde la fila 5. */
+export function llenarHojaOlva(hojaXml: string, filas: FilaOlva[]): string {
+  if (filas.length === 0) throw new Error("No hay envíos para poner en la plantilla.");
+  if (filas.length > MAXIMO_DE_FILAS_OLVA) throw new Error(`La plantilla de Olva acepta hasta ${MAXIMO_DE_FILAS_OLVA} envíos por archivo.`);
+  let xml = hojaXml;
+  filas.forEach((fila, i) => {
+    if (!fila.tienda) throw new Error("Falta la tienda Olva de un envío.");
+    const r = PRIMERA_FILA_OLVA + i;
+    const patronFila = new RegExp(`<row r="${r}"[^>]*>[\\s\\S]*?</row>`);
+    const filaXml = patronFila.exec(xml)?.[0];
+    if (!filaXml) throw new Error(`La plantilla de Olva no tiene la fila ${r}.`);
+    const valores: Record<string, string | number | null> = {
+      B: OLVA_FIJO.tipoDocumento,
+      // DNI y celular como texto: así no se pierde un 0 adelante.
+      C: fila.documento.replace(/\D/g, ""),
+      D: fila.nombres.trim(),
+      E: fila.apellido.trim(),
+      H: fila.telefono.replace(/\D/g, ""),
+      J: OLVA_FIJO.tipoEntrega,
+      K: fila.tienda.departamento,
+      L: fila.tienda.provincia,
+      M: fila.tienda.distrito,
+      O: fila.tienda.tienda,
+      Q: OLVA_FIJO.paquete,
+      R: OLVA_FIJO.largo,
+      S: OLVA_FIJO.ancho,
+      T: OLVA_FIJO.alto,
+      U: OLVA_FIJO.peso,
+      V: OLVA_FIJO.articulo,
+      W: OLVA_FIJO.valor,
+      X: OLVA_FIJO.seguro,
+    };
+    let nueva = filaXml;
+    for (const [col, valor] of Object.entries(valores)) nueva = ponerCelda(nueva, `${col}${r}`, valor);
+    xml = xml.replace(patronFila, nueva);
+  });
   return xml;
 }

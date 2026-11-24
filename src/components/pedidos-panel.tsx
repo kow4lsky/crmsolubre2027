@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ImportarPedidos } from "@/components/importar-pedidos";
+import { EnvioOlva } from "@/components/envio-olva";
 import { EnvioShalom } from "@/components/envio-shalom";
 import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoAjeno } from "@/components/pedido-ajeno";
@@ -122,6 +123,7 @@ export function PedidosPanel({
   const [ajenos, setAjenos] = useState<Pedido[]>([]);
   const [verAjeno, setVerAjeno] = useState<Pedido | null>(null);
   const [verShalom, setVerShalom] = useState(false);
+  const [verOlva, setVerOlva] = useState(false);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
   useEffect(() => {
@@ -393,6 +395,11 @@ export function PedidosPanel({
             Archivo para Shalom
           </button>
         )}
+        {puedeReporte && (
+          <button type="button" disabled={!seleccion.size} onClick={() => setVerOlva(true)} className={BOTON_SECUNDARIO}>
+            Archivo para Olva
+          </button>
+        )}
         {esAdmin && (
           <button
             type="button"
@@ -534,6 +541,8 @@ export function PedidosPanel({
           </div>
         </section>
       )}
+
+      {verOlva && <EnvioOlva pedidos={seleccionados} onClose={() => setVerOlva(false)} onNotice={onNotice} />}
 
       {verShalom && <EnvioShalom pedidos={seleccionados} onClose={() => setVerShalom(false)} onNotice={onNotice} />}
 
