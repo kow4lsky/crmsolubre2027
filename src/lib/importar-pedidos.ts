@@ -61,9 +61,12 @@ const COLUMNAS: Record<string, string> = {
 
 /** Las columnas de producto de la planilla. Cada celda es una cantidad. */
 export const PRODUCTOS_DE_LA_PLANILLA = [
-  "SOLUBRE", "BROCHAS", "LIMPIAXPRESS", "MILDREW", "HYPERCLEAN", "CHISGUETE", "PAÑO",
+  "SOLUBRE", "BROCHAS", "LIMPIAXPRESS", "MILDREW", "HYPERCLEAN", "CHISGUETE", "CHISGETE", "PAÑO",
   "CAJAS", "CEPILLO VERDE", "PIPIBYE", "CEPILLO DOBLE NEGRO", "PLUMON ROJO", "PLUMON BLANCO",
 ];
+
+/** Columnas de la planilla cuyo producto se llama distinto en el CRM. */
+const NOMBRE_EN_EL_CRM: Record<string, string> = { CHISGUETE: "CHISGETE" };
 
 const FECHAS_CON_HORA = new Set([
   "fecha_creacion", "ultima_gestion", "fecha_salida", "fecha_entregado", "fecha_asig_encargado",
@@ -233,7 +236,7 @@ export function leerPedidos(filasCsv: string[][], desde: string | null = null): 
     const titulo = original.trim();
     const clave = normalizarTitulo(titulo);
     if (!clave) return null;
-    if (productos.has(clave)) return { tipo: "producto", nombre: titulo.toUpperCase() };
+    if (productos.has(clave)) return { tipo: "producto", nombre: NOMBRE_EN_EL_CRM[clave] ?? titulo.toUpperCase() };
     const columna = COLUMNAS[clave];
     // Si dos columnas dicen lo mismo, gana la primera y la otra va a extra.
     if (columna && !usadas.has(columna)) {

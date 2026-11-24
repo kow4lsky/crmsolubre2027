@@ -56,6 +56,7 @@ import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
 import { PendientesPanel } from "@/components/pendientes-panel";
 import { RecordatoriosDeLlamada } from "@/components/recordatorios-llamada";
+import { ProductosCard } from "@/components/productos-card";
 import { UsuariosPanel } from "@/components/usuarios-panel";
 import { BrandMark } from "@/components/brand";
 import { InboxView } from "@/components/inbox-view";
@@ -540,6 +541,7 @@ function Workspace({
             <Overview data={data} onNavigate={selectView} onOpenLead={setOpenLead} />
           ) : (
             <ModuleView
+              workspaceId={context.workspaceId}
               view={view}
               data={data}
               openChat={openChat}
@@ -1209,6 +1211,7 @@ function ConversationList({
 }
 
 function ModuleView({
+  workspaceId,
   view,
   data,
   openChat,
@@ -1218,6 +1221,7 @@ function ModuleView({
   onOpenLead,
   onOpenTareas,
 }: {
+  workspaceId: string;
   view: View;
   data: CrmData;
   openChat: string | null;
@@ -1302,6 +1306,7 @@ function ModuleView({
         {view === "Configuración" && (
           <div className="space-y-8">
             <UsuariosPanel onNotice={onNotice} />
+            <ProductosCard workspaceId={workspaceId} onNotice={onNotice} />
             <AvisosPushCard />
             <SettingsPanel timezone={data.timezone} />
           </div>
