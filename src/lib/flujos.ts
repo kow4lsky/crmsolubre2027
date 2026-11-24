@@ -114,3 +114,55 @@ export function propuestaDesdeFlujos(pedido: PedidoFlujos, catalogo: string[]) {
     creado,
   };
 }
+
+/* ------------------------------------------------------------ analítica */
+
+/** Lo que guarda `flujos_diario` de un día. */
+export type DiaDeFlujos = {
+  leads: number;
+  leads_por_origen: Record<string, number>;
+  leads_por_anuncio: Record<string, number>;
+  ventas: number;
+  ventas_ia: number;
+  monto: number;
+  ventas_por_etapa: Record<string, number>;
+};
+
+/** "2026-11-24" → el rango de ese día en Lima, para las consultas a Flujos. */
+export function rangoDelDia(dia: string): { date_from: string; date_to: string } {
+  return { date_from: `${dia}T00:00:00-05:00`, date_to: `${dia}T23:59:59-05:00` };
+}
+
+/**
+ * Los leads de un día (de `leads_list`) y las métricas de pedidos de ese día
+ * (de `orders_metrics`) → la fila de `flujos_diario`.
+ */
+export function resumirDiaDeFlujos(dia: string, leads: PedidoFlujos[], metricas: Record<string, unknown>): DiaDeFlujos {
+  const leads_por_origen: Record<string, number> = {};
+  const leads_por_anuncio: Record<string, number> = {};
+  for (const lead of leads) {
+    const anuncio = lead.anuncio && typeof lead.anuncio === "object" ? (lead.anuncio as Record<string, unknown>) : null;
+    const origen = anuncio ? "Anuncio" : "Directo";
+    leads_por_origen[origen] = (leads_por_origen[origen] ?? 0) + 1;
+    if (anuncio) {
+      const titulo = String(anuncio.headline ?? anuncio.ad_id ?? "Sin título").trim().slice(0, 80) || "Sin título";
+      leads_por_anuncio[titulo] = (leads_por_anuncio[titulo] ?? 0) + 1;
+    }
+  }
+
+  const porDia = Array.isArray(metricas.por_dia) ? (metricas.por_dia as Record<string, unknown>[]) : [];
+  const delDia = porDia.find((d) => String(d.dia) === dia);
+  const ventas_por_etapa: Record<string, number> = {};
+  for (const etapa of Array.isArray(metricas.por_etapa) ? (metricas.por_etapa as Record<string, unknown>[]) : []) {
+    ventas_por_etapa[String(etapa.etapa ?? "?")] = Number(etapa.pedidos ?? 0) || 0;
+  }
+  return {
+    leads: leads.length,
+    leads_por_origen,
+    leads_por_anuncio,
+    ventas: Number(delDia?.pedidos ?? metricas.pedidos ?? 0) || 0,
+    ventas_ia: Number(metricas.creados_por_ia ?? 0) || 0,
+    monto: Math.round((Number(delDia?.monto ?? metricas.monto_total ?? 0) || 0) * 100) / 100,
+    ventas_por_etapa,
+  };
+}

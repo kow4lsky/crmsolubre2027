@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  BarChart3,
   Bot,
   CalendarDays,
   ChartPie,
@@ -49,6 +50,7 @@ import { AgendaPanel } from "@/components/agenda-panel";
 import { AgentsPanel } from "@/components/agents-panel";
 import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
+import { AnaliticaPanel } from "@/components/analitica-panel";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
 import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
@@ -100,6 +102,7 @@ type View =
   | "Pedidos"
   | "Pedidos pendientes"
   | "Autorizaciones"
+  | "Analítica"
   | "Resumen"
   | "Conversaciones"
   | "Pipeline"
@@ -125,6 +128,7 @@ const VIEW_SLUGS: Record<View, string> = {
   Pedidos: "pedidos",
   "Pedidos pendientes": "pendientes",
   Autorizaciones: "autorizaciones",
+  Analítica: "analitica",
   Resumen: "resumen",
   Conversaciones: "conversaciones",
   Pipeline: "pipeline",
@@ -157,6 +161,7 @@ const NAVIGATION: {
   { label: "Pedidos", icon: Package },
   { label: "Pedidos pendientes", icon: Sparkles },
   { label: "Autorizaciones", icon: ShieldCheck },
+  { label: "Analítica", icon: BarChart3 },
   { label: "Resumen", icon: LayoutDashboard },
   { label: "Conversaciones", icon: MessageSquareMore },
   { label: "Pipeline", icon: LineChart },
@@ -522,6 +527,8 @@ function Workspace({
               rolVenta={context.rolVenta}
               onNotice={notify}
             />
+          ) : view === "Analítica" ? (
+            <AnaliticaPanel workspaceId={context.workspaceId} rolVenta={context.rolVenta} onNotice={notify} />
           ) : view === "Autorizaciones" ? (
             <AutorizacionesPanel
               workspaceId={context.workspaceId}

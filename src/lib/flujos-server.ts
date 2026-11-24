@@ -2,7 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { esDeIA, propuestaDesdeFlujos, type PedidoFlujos } from "@/lib/flujos";
+import { esDeIA, propuestaDesdeFlujos, rangoDelDia, resumirDiaDeFlujos, type PedidoFlujos } from "@/lib/flujos";
+import { dayKeyInZone } from "@/lib/fechas";
 import { credenciales } from "@/lib/integraciones-server";
 import { llamarHerramientaMcp as llamarFlujos } from "@/lib/mcp-cliente";
 
@@ -99,6 +100,68 @@ export async function sincronizarFlujos(supabase: SupabaseClient, forzar = false
     const mensaje = error instanceof Error ? error.message : String(error);
     console.error("[flujos]", mensaje);
     await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "flujos");
+    return { ok: false, error: mensaje };
+  }
+}
+
+/** Los números del día (leads y ventas de Flujos) se recalculan cada hora. */
+const DIARIO_CADA_MS = 60 * 60 * 1000;
+/** Tope de leads que se cuentan por día: 50 por página. */
+const PAGINAS_DE_LEADS = 40;
+
+/**
+ * Guarda en `flujos_diario` cuántos leads entraron a Flujos hoy y ayer (de
+ * qué anuncio) y cuántas ventas se cerraron ahí. Lo usa la Analítica.
+ */
+export async function actualizarFlujosDiario(supabase: SupabaseClient, forzar = false): Promise<ResultadoFlujos> {
+  const conexion = await credenciales("flujos", ["token", "url"]);
+  if (!conexion.ok) return { ok: true, omitido: "sin conexión", revisados: 0, deIA: 0, nuevos: 0 };
+
+  const ahora = Date.now();
+  const { data: estado } = await supabase.from("sincronizaciones").select("ultima_at").eq("clave", "flujos_diario").maybeSingle();
+  const ultima = estado?.ultima_at ? new Date(estado.ultima_at as string).getTime() : null;
+  if (!forzar && ultima && ahora - ultima < DIARIO_CADA_MS) {
+    return { ok: true, omitido: "consultado hace poco", revisados: 0, deIA: 0, nuevos: 0 };
+  }
+  await supabase.from("sincronizaciones").upsert({ clave: "flujos_diario", ultima_at: new Date(ahora).toISOString(), updated_at: new Date().toISOString() });
+
+  try {
+    const { data: workspace } = await supabase.from("workspaces").select("id").order("created_at").limit(1).maybeSingle();
+    if (!workspace) return { ok: false, error: "Todavía no hay workspace." };
+
+    const hoy = dayKeyInZone(new Date(ahora), "America/Lima");
+    const ayer = dayKeyInZone(new Date(ahora - 24 * 60 * 60 * 1000), "America/Lima");
+    let revisados = 0;
+    for (const dia of [ayer, hoy]) {
+      const rango = rangoDelDia(dia);
+      const leads: PedidoFlujos[] = [];
+      for (let pagina = 0; pagina < PAGINAS_DE_LEADS; pagina++) {
+        const respuesta = await llamarFlujos(conexion.valores.url, conexion.valores.token, "leads_list", {
+          ...rango,
+          limit: POR_PAGINA,
+          offset: pagina * POR_PAGINA,
+        });
+        const items = (respuesta.items ?? []) as PedidoFlujos[];
+        leads.push(...items);
+        if (!respuesta.has_more || items.length < POR_PAGINA) break;
+      }
+      const metricas = await llamarFlujos(conexion.valores.url, conexion.valores.token, "orders_metrics", {
+        ...rango,
+        timezone: "America/Lima",
+      });
+      const fila = resumirDiaDeFlujos(dia, leads, metricas);
+      const { error } = await supabase
+        .from("flujos_diario")
+        .upsert({ workspace_id: workspace.id, dia, ...fila, actualizado_at: new Date().toISOString() });
+      if (error) throw new Error(error.message);
+      revisados += leads.length;
+    }
+    await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "flujos_diario");
+    return { ok: true, revisados, deIA: 0, nuevos: 0 };
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error("[flujos diario]", mensaje);
+    await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "flujos_diario");
     return { ok: false, error: mensaje };
   }
 }

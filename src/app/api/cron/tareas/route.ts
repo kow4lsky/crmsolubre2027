@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { sincronizarFlujos } from "@/lib/flujos-server";
+import { actualizarFlujosDiario, sincronizarFlujos } from "@/lib/flujos-server";
 import { avisarLlamadas } from "@/lib/llamadas-server";
 import { avisarTareasVencidas } from "@/lib/tareas-server";
 import { verifyZernioToken } from "@/lib/zernio";
@@ -55,15 +55,17 @@ async function correr(request: NextRequest) {
 
   // Las tareas vencidas y las próximas llamadas de los pedidos: el mismo reloj.
   // Tareas vencidas, próximas llamadas y ventas nuevas de la IA en Flujos: el mismo reloj.
-  const [tareas, llamadas, flujos] = await Promise.all([
+  // Los leads del día para la Analítica, cada hora.
+  const [tareas, llamadas, flujos, flujosDiario] = await Promise.all([
     avisarTareasVencidas(supabase),
     avisarLlamadas(supabase),
     sincronizarFlujos(supabase),
+    actualizarFlujosDiario(supabase),
   ]);
 
-  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos }));
+  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos, flujosDiario }));
 
-  return NextResponse.json({ ok: true, tareas, llamadas, flujos });
+  return NextResponse.json({ ok: true, tareas, llamadas, flujos, flujosDiario });
 }
 
 // Vercel Cron entra por GET; un `pg_cron` con `pg_net` suele mandar POST.

@@ -175,7 +175,7 @@ test("un pedido CONFIRMADO necesita inventario, envío y courier", async () => {
 test("las secciones de cada persona", async () => {
   const { seccionesDe, seccionesPorDefecto } = await import("../src/lib/secciones.ts");
   assert.deepEqual(seccionesPorDefecto("asesor"), ["Pedidos", "Autorizaciones", "Tareas"]);
-  assert.equal(seccionesPorDefecto("admin").length, 10);
+  assert.equal(seccionesPorDefecto("admin").length, 11);
   assert.deepEqual(seccionesDe(null, "encargado"), ["Pedidos", "Autorizaciones", "Tareas"]);
   // Lo que no es una sección asignable se descarta (Configuración es sólo del admin).
   assert.deepEqual(seccionesDe(["Pedidos", "Configuración", 3, "Agenda"], "asesor"), ["Pedidos", "Agenda"]);
