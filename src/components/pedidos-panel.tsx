@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ImportarPedidos } from "@/components/importar-pedidos";
 import { ImportarShopify } from "@/components/importar-shopify";
+import { PedidoAjeno } from "@/components/pedido-ajeno";
 import { PedidoForm } from "@/components/pedido-form";
 import { BOTON_SECUNDARIO, EstadoChip, descargar } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
@@ -116,6 +117,9 @@ export function PedidosPanel({
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [importando, setImportando] = useState(false);
   const [importandoShopify, setImportandoShopify] = useState(false);
+  // Al buscar: los pedidos de otras asesoras que coinciden, sólo para ver.
+  const [ajenos, setAjenos] = useState<Pedido[]>([]);
+  const [verAjeno, setVerAjeno] = useState<Pedido | null>(null);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
   useEffect(() => {
@@ -212,6 +216,23 @@ export function PedidosPanel({
       vigente = false;
     };
   }, [supabase, workspaceId, filtros, pagina, recarga]);
+
+  // El administrador ya ve todo; el resto busca también en la base entera.
+  useEffect(() => {
+    const termino = terminoDeBusqueda(filtros.texto);
+    let vigente = true;
+    void (async () => {
+      if (esAdmin || termino.length < 3) {
+        if (vigente) setAjenos([]);
+        return;
+      }
+      const { data, error: falla } = await supabase.rpc("buscar_pedidos_de_otros", { ws: workspaceId, termino });
+      if (vigente) setAjenos(falla ? [] : ((data ?? []) as Pedido[]));
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [supabase, workspaceId, filtros.texto, esAdmin, recarga]);
 
   const seleccionados = useMemo(() => [...seleccion.values()], [seleccion]);
   const todosMarcados = pedidos.length > 0 && pedidos.every((p) => seleccion.has(p.id));
@@ -475,6 +496,39 @@ export function PedidosPanel({
           </button>
         </div>
       </div>
+
+      {ajenos.length > 0 && (
+        <section className="rounded-2xl border border-sky-200 bg-sky-50/60 p-3 text-sm dark:border-sky-400/20 dark:bg-sky-400/5">
+          <p className="font-semibold">
+            También coinciden {ajenos.length === 30 ? "30 o más" : ajenos.length} pedido(s) de otras asesoras{" "}
+            <span className="font-normal text-neutral-500">(sólo para ver)</span>
+          </p>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-xs">
+              <tbody>
+                {ajenos.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={() => setVerAjeno(p)}
+                    className="cursor-pointer border-b border-sky-100 last:border-0 hover:bg-white dark:border-white/5 dark:hover:bg-white/5"
+                  >
+                    <td className="whitespace-nowrap px-2 py-2 font-semibold">{p.codigo}</td>
+                    <td className="whitespace-nowrap px-2 py-2">{p.fecha_registro}</td>
+                    <td className="px-2 py-2">{p.cliente}</td>
+                    <td className="whitespace-nowrap px-2 py-2">{p.celular || "—"}</td>
+                    <td className="px-2 py-2">
+                      <EstadoChip estado={p.estado} />
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2">{p.asesor || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {verAjeno && <PedidoAjeno workspaceId={workspaceId} pedido={verAjeno} onClose={() => setVerAjeno(null)} />}
 
       {abierto && (
         <PedidoForm
