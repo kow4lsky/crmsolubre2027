@@ -158,12 +158,55 @@ export function AnaliticaPanel({
 
 /* ------------------------------------------------------------- asesoras */
 
-function VistaAsesoras({ asesoras }: { asesoras: AnaliticaAsesora[] }) {
-  if (asesoras.length === 0) {
-    return <p className={TARJETA}>Todavía no hay movimiento de asesoras en este periodo.</p>;
+/** Las asesoras que alguien escondió de su vista. Se recuerda en este navegador. */
+const OCULTAS = "crm-solubre:analitica-ocultas";
+
+function leerOcultas(): string[] {
+  try {
+    const guardadas = JSON.parse(window.localStorage.getItem(OCULTAS) ?? "[]");
+    return Array.isArray(guardadas) ? guardadas.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function VistaAsesoras({ asesoras: todas }: { asesoras: AnaliticaAsesora[] }) {
+  const [ocultas, setOcultas] = useState<string[]>(() => (typeof window === "undefined" ? [] : leerOcultas()));
+  const alternar = (alias: string) =>
+    setOcultas((actual) => {
+      const nuevas = actual.includes(alias) ? actual.filter((a) => a !== alias) : [...actual, alias];
+      try {
+        window.localStorage.setItem(OCULTAS, JSON.stringify(nuevas));
+      } catch {
+        // Sin almacenamiento igual funciona: sólo no se recuerda.
+      }
+      return nuevas;
+    });
+  const asesoras = todas.filter((a) => !ocultas.includes(a.alias));
+
+  if (todas.length === 0) {
+    return <p className={TARJETA}>No hay asesoras en el equipo. Se agregan en Configuración → Usuarios, con rol de asesora y alias.</p>;
   }
   return (
     <div className="space-y-4">
+      {todas.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-neutral-500">Ver:</span>
+          {todas.map((a) => {
+            const visible = !ocultas.includes(a.alias);
+            return (
+              <button
+                key={a.alias}
+                type="button"
+                onClick={() => alternar(a.alias)}
+                className={`cursor-pointer rounded-full border px-2.5 py-1 font-semibold ${visible ? "border-amber-500 bg-amber-500 text-neutral-950" : "border-neutral-300 text-neutral-500 dark:border-white/20"}`}
+              >
+                {a.alias}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className={`${TARJETA} overflow-x-auto p-0`}>
         <table className="w-full min-w-[860px] text-sm">
           <thead className="text-left text-xs text-neutral-500">
