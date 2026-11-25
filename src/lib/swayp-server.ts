@@ -11,7 +11,8 @@ export async function consultarGuiaSwayp(guia: string): Promise<Record<string, u
   if (!conexion.ok) return null;
   const { api_token, base_url, email } = conexion.valores;
   const base = base_url.replace(/\/+$/, "");
-  const headers = { Authorization: `Bearer ${api_token}`, email, "Content-Type": "application/json" };
+  // Swayp opera en Colombia y Perú: x-country dice cuál (obligatorio en su API v2).
+  const headers = { Authorization: `Bearer ${api_token}`, email, "x-country": "PE", "Content-Type": "application/json" };
 
   const pedir = () => fetch(`${base}/v2/guias/${encodeURIComponent(guia)}`, { headers, cache: "no-store" });
   try {
