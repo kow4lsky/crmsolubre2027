@@ -3,7 +3,7 @@
 -- Pegalo entero en el SQL Editor de un proyecto de Supabase NUEVO y tocá Run.
 -- No lo corras en la base del CRM de producción.
 --
--- Son las 46 migraciones de supabase/migrations/, en orden. No lo edites a
+-- Son las 47 migraciones de supabase/migrations/, en orden. No lo edites a
 -- mano: se regenera con `npm run sql:instalar`.
 
 -- =============================================================================
@@ -4913,3 +4913,18 @@ begin
     perform public.aplicar_nuevo_nombre_de_producto(w.workspace_id, 'CHISGUETE', 'CHISGETE');
   end loop;
 end $$;
+
+-- =============================================================================
+-- 202612080001_shalom_pro.sql
+-- =============================================================================
+
+-- Shalom PRO como una conexión más (Configuración → Conexiones).
+--
+-- Shalom no tiene API pública: el CRM usa la sesión que la persona abre en
+-- pro.shalom.pe con "Recuérdame" (la cookie se guarda cifrada, como las demás
+-- claves). Con ella registra los envíos y, cada 12 horas, trae su estado.
+
+alter table public.integraciones drop constraint if exists integraciones_provider_check;
+alter table public.integraciones
+  add constraint integraciones_provider_check
+  check (provider in ('openai', 'ycloud', 'zernio', 'shopify', 'swayp', 'flujos', 'shalom'));

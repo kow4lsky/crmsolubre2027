@@ -11,9 +11,9 @@
  * Módulo puro: lo usan el servidor y el panel, y lo prueba el runner de Node.
  */
 
-export type Integracion = "openai" | "ycloud" | "zernio" | "shopify" | "swayp" | "flujos";
+export type Integracion = "openai" | "ycloud" | "zernio" | "shopify" | "swayp" | "flujos" | "shalom";
 
-export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify", "swayp", "flujos"];
+export const INTEGRACIONES: Integracion[] = ["openai", "ycloud", "zernio", "shopify", "swayp", "flujos", "shalom"];
 
 export type Campo = {
   clave: string;
@@ -304,6 +304,44 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
         env: "FLUJOS_MCP_URL",
         porDefecto: "https://api.flujosinteligentes.com/functions/v1/mcp-server/v1/unrestricted",
         formato: "url",
+      },
+    ],
+  },
+  shalom: {
+    integracion: "shalom",
+    nombre: "Shalom PRO (envíos a provincia)",
+    descripcion:
+      "Registra en Shalom los envíos que elijas desde Pedidos y trae al CRM el tracking, la clave y el costo. Cada 12 horas actualiza el estado de los envíos de Shalom. Usa tu sesión de Shalom PRO: tu contraseña nunca se guarda.",
+    pasos: [
+      {
+        texto: "En tu computadora, con Chrome, entra a https://pro.shalom.pe con tu usuario y contraseña, y marca \"Recuérdame\" antes de Iniciar sesión.",
+      },
+      {
+        texto: "Ya adentro, aprieta F12 → pestaña Application (o Aplicación) → a la izquierda Cookies → https://pro.shalom.pe. Busca la fila que empieza con remember_web_, haz doble clic en su Value (Valor), cópialo entero y pégalo acá.",
+        con: "sesion",
+      },
+      { texto: "La clave para recoger en agencia que se pone a todos los envíos.", con: "clave" },
+      { texto: "Guarda.", con: "guardar" },
+      {
+        texto: "Prueba en Pedidos: selecciona envíos de Shalom → Archivo para Shalom → Registrar en Shalom. Si un día dice que la sesión venció, repite los pasos 1 y 2.",
+      },
+    ],
+    campos: [
+      {
+        clave: "sesion",
+        etiqueta: "Cookie de sesión (remember_web_…)",
+        secreto: true,
+        requerido: true,
+        env: "SHALOM_PRO_SESION",
+        placeholder: "eyJpdiI6…",
+      },
+      {
+        clave: "clave",
+        etiqueta: "Clave de seguridad de los envíos",
+        secreto: false,
+        requerido: false,
+        env: "SHALOM_PRO_CLAVE",
+        porDefecto: "1126",
       },
     ],
   },

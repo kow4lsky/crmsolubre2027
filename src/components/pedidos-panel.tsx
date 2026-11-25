@@ -11,11 +11,13 @@ import {
   RefreshCw,
   Search,
   ShoppingBag,
+  Truck,
   Trash2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { actualizarShalomAhora } from "@/app/actions";
 import { ImportarPedidos } from "@/components/importar-pedidos";
 import { EnvioOlva } from "@/components/envio-olva";
 import { EnvioShalom } from "@/components/envio-shalom";
@@ -124,6 +126,7 @@ export function PedidosPanel({
   const [ajenos, setAjenos] = useState<Pedido[]>([]);
   const [verAjeno, setVerAjeno] = useState<Pedido | null>(null);
   const [verShalom, setVerShalom] = useState(false);
+  const [actualizandoShalom, setActualizandoShalom] = useState(false);
   const [verOlva, setVerOlva] = useState(false);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
@@ -309,6 +312,24 @@ export function PedidosPanel({
           <RefreshCw className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">Actualizar</span>
         </button>
+        {puedeReporte && (
+          <button
+            type="button"
+            disabled={actualizandoShalom}
+            onClick={async () => {
+              setActualizandoShalom(true);
+              const r = await actualizarShalomAhora();
+              setActualizandoShalom(false);
+              onNotice(r.ok ? r.mensaje : r.error);
+              if (r.ok) recargar();
+            }}
+            className={`${BOTON_SECUNDARIO} h-11`}
+            title="Trae de Shalom PRO el estado de los envíos (se hace solo cada 12 horas)"
+          >
+            <Truck className={`size-4 ${actualizandoShalom ? "animate-pulse" : ""}`} />
+            <span className="hidden sm:inline">Actualizar Shalom</span>
+          </button>
+        )}
         {esAdmin && (
           <button type="button" onClick={() => setImportando(true)} className={`${BOTON_SECUNDARIO} h-11`}>
             <FileSpreadsheet className="size-4" />
@@ -556,7 +577,7 @@ export function PedidosPanel({
 
       {verOlva && <EnvioOlva pedidos={seleccionados} onClose={() => setVerOlva(false)} onNotice={onNotice} />}
 
-      {verShalom && <EnvioShalom pedidos={seleccionados} onClose={() => setVerShalom(false)} onNotice={onNotice} />}
+      {verShalom && <EnvioShalom pedidos={seleccionados} onClose={() => setVerShalom(false)} onNotice={onNotice} onRegistrado={recargar} />}
 
       {verAjeno && <PedidoAjeno workspaceId={workspaceId} pedido={verAjeno} onClose={() => setVerAjeno(null)} />}
 

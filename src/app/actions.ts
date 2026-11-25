@@ -4253,6 +4253,36 @@ export async function prepararAvisosPush(): Promise<
 }
 
 /**
+ * "Registrar en Shalom": el Excel que armó la pantalla de revisión se sube a
+ * Shalom PRO con la sesión guardada, y vuelve el tracking de cada pedido.
+ * Sólo el administrador o el encargado.
+ */
+export async function registrarPedidosEnShalom(
+  archivoBase64: string,
+  pedidoIds: string[],
+): Promise<{ ok: true; resultado: import("@/lib/shalom-server").ResultadoShalom } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden registrar en Shalom." };
+  if (!archivoBase64 || pedidoIds.length === 0) return { ok: false, error: "No hay envíos para registrar." };
+  const { registrarEnShalom } = await import("@/lib/shalom-server");
+  const archivo = Uint8Array.from(Buffer.from(archivoBase64, "base64"));
+  return registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500));
+}
+
+/** "Actualizar estados de Shalom" sin esperar las 12 horas. */
+export async function actualizarShalomAhora(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden hacerlo." };
+  const { actualizarEstadosShalom } = await import("@/lib/shalom-server");
+  const r = await actualizarEstadosShalom(getSupabaseAdmin(), true);
+  if (!r.ok) return { ok: false, error: r.error };
+  if (r.omitido === "sin conexión") return { ok: false, error: "Falta conectar Shalom PRO en Configuración → Conexiones." };
+  return { ok: true, mensaje: `Shalom al día: ${r.actualizados} de ${r.revisados} envíos en camino cambiaron.` };
+}
+
+/**
  * "Actualizar Flujos" en la Analítica: recuenta ya los leads y ventas de hoy y
  * ayer. Sólo el administrador o el encargado.
  */
