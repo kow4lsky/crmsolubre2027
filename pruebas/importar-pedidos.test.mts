@@ -120,10 +120,10 @@ test("un número absurdo no rompe la importación: va a otros datos", () => {
   assert.equal(a.monto, undefined);
   assert.equal(a.extra.MONTO, "948584475123");
   assert.equal(a.adelanto, 20);
-  assert.deepEqual(a.items, { CHISGUETE: 2 });
+  assert.deepEqual(a.items, { CHISGETE: 2 });
   assert.equal(a.extra.SOLUBRE, "948584475");
   assert.equal(b.monto, 89.9);
-  assert.deepEqual(b.items, { CHISGUETE: 3 });
+  assert.deepEqual(b.items, { CHISGETE: 3 });
   assert.equal(b.extra.SOLUBRE, "1.5");
   assert.equal(lectura.valoresRaros, 3);
 });
@@ -144,4 +144,10 @@ test("muestra lo que ya está en el CRM por código o por celular, y se elige qu
   // Por defecto las dudosas no entran; la que se marca, sí.
   assert.deepEqual(filasAImportar(filas, c, new Set()).map((f) => f.codigo), ["WED7666"]);
   assert.deepEqual(filasAImportar(filas, c, new Set(["WED7664"])).map((f) => f.codigo), ["WED7664", "WED7666"]);
+});
+
+test("la columna CHISGUETE de la planilla entra como CHISGETE", async () => {
+  const { leerPedidos } = await import("../src/lib/importar-pedidos.ts");
+  const l = leerPedidos([["COD", "CLIENTE", "CHISGUETE", "SOLUBRE"], ["WED1", "Ana", "2", "1"]]);
+  assert.deepEqual(l.filas[0].items, { CHISGETE: 2, SOLUBRE: 1 });
 });
