@@ -6,7 +6,7 @@ import { dayKeyInZone } from "@/lib/fechas";
 import { credenciales } from "@/lib/integraciones-server";
 import type { Estado } from "@/lib/pedidos";
 import {
-  cookieRecuerdame,
+  cookieDeSesion,
   emparejarPorDni,
   estadoCrmDesdeShalom,
   etiquetaShalom,
@@ -20,6 +20,11 @@ import { ClienteShalomPro, SesionVencida, historial, pendientes, registrarMasivo
 const ZONA = "America/Lima";
 /** Los estados de Shalom se consultan cada 12 horas. */
 const CADA_MS = 12 * 60 * 60 * 1000;
+/**
+ * La sesión de Shalom PRO se cierra sola si nadie la usa por un rato (unas
+ * horas). El CRM entra cada 20 minutos para que siga abierta.
+ */
+const MANTENER_CADA_MS = 20 * 60 * 1000;
 /** Hasta cuántos días atrás se siguen los envíos que todavía no llegan. */
 const DIAS_DE_SEGUIMIENTO = 45;
 
@@ -28,7 +33,7 @@ type PedidoShalom = { id: string; codigo: string; dni: string | null; estado: Es
 async function cliente(): Promise<{ ok: true; cliente: ClienteShalomPro; clave: string } | { ok: false; error: string }> {
   const conexion = await credenciales("shalom", ["sesion"]);
   if (!conexion.ok) return { ok: false, error: conexion.error };
-  const cookie = cookieRecuerdame(conexion.valores.sesion);
+  const cookie = cookieDeSesion(conexion.valores.sesion);
   if (!cookie) return { ok: false, error: "La cookie de Shalom PRO no se entiende. Vuelve a copiarla en Configuración → Conexiones → Shalom PRO." };
   return { ok: true, cliente: new ClienteShalomPro(cookie), clave: conexion.valores.clave || "1126" };
 }
@@ -48,6 +53,44 @@ async function anotar(supabase: SupabaseClient, pedido: PedidoShalom, envio: Env
   const { error } = await supabase.from("pedidos").update(cambios).eq("id", pedido.id);
   if (error) throw new Error(error.message);
   return nuevo;
+}
+
+/** El nombre o correo de la cuenta, de lo que devuelva /auth/me. */
+function cuentaDe(yo: unknown): string {
+  const v = (yo && typeof yo === "object" ? yo : {}) as Record<string, unknown>;
+  const usuario = (v.user && typeof v.user === "object" ? v.user : v) as Record<string, unknown>;
+  return String(usuario.name ?? usuario.nombre ?? usuario.razon_social ?? usuario.email ?? "").trim();
+}
+
+/**
+ * Entra a Shalom PRO para que la sesión no se cierre por falta de uso (cada
+ * 20 minutos, desde el cron) y, de paso, confirma que sigue abierta.
+ */
+export async function mantenerSesionShalom(
+  supabase: SupabaseClient,
+  forzar = false,
+): Promise<{ ok: true; omitido?: string; cuenta?: string } | { ok: false; error: string }> {
+  const conexion = await cliente();
+  if (!conexion.ok) return { ok: true, omitido: "sin conexión" };
+
+  const ahora = Date.now();
+  const { data: estado } = await supabase.from("sincronizaciones").select("ultima_at").eq("clave", "shalom_sesion").maybeSingle();
+  const ultima = estado?.ultima_at ? new Date(estado.ultima_at as string).getTime() : null;
+  if (!forzar && ultima && ahora - ultima < MANTENER_CADA_MS) return { ok: true, omitido: "hace poco" };
+  await supabase
+    .from("sincronizaciones")
+    .upsert({ clave: "shalom_sesion", ultima_at: new Date(ahora).toISOString(), updated_at: new Date().toISOString() });
+
+  try {
+    const cuenta = cuentaDe(await conexion.cliente.abrir());
+    await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom_sesion");
+    return { ok: true, cuenta };
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error("[shalom sesión]", mensaje);
+    await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "shalom_sesion");
+    return { ok: false, error: error instanceof SesionVencida ? mensaje : `No se pudo entrar a Shalom PRO: ${mensaje}` };
+  }
 }
 
 export type ResultadoShalom = {

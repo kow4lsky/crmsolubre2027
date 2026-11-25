@@ -4275,11 +4275,15 @@ export async function actualizarShalomAhora(): Promise<{ ok: true; mensaje: stri
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
   if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden hacerlo." };
-  const { actualizarEstadosShalom } = await import("@/lib/shalom-server");
+  const { actualizarEstadosShalom, mantenerSesionShalom } = await import("@/lib/shalom-server");
+  // Primero se confirma que la sesión de Shalom PRO está abierta.
+  const sesion = await mantenerSesionShalom(getSupabaseAdmin(), true);
+  if (!sesion.ok) return { ok: false, error: sesion.error };
+  if (sesion.omitido === "sin conexión") return { ok: false, error: "Falta conectar Shalom PRO en Configuración → Conexiones." };
+  const conectado = sesion.cuenta ? `Conectado a Shalom PRO (${sesion.cuenta}). ` : "Conectado a Shalom PRO. ";
   const r = await actualizarEstadosShalom(getSupabaseAdmin(), true);
-  if (!r.ok) return { ok: false, error: r.error };
-  if (r.omitido === "sin conexión") return { ok: false, error: "Falta conectar Shalom PRO en Configuración → Conexiones." };
-  return { ok: true, mensaje: `Shalom al día: ${r.actualizados} de ${r.revisados} envíos en camino cambiaron.` };
+  if (!r.ok) return { ok: false, error: `${conectado}Pero al traer los estados: ${r.error}` };
+  return { ok: true, mensaje: `${conectado}${r.actualizados} de ${r.revisados} envíos en camino cambiaron de estado.` };
 }
 
 /**

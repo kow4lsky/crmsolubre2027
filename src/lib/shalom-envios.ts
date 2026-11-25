@@ -3,7 +3,7 @@
  *
  * Shalom PRO no tiene API pública: el CRM usa las mismas llamadas que su web
  * (registro masivo, envíos pendientes, historial), con la sesión que la
- * persona abrió con "Recuérdame". Los nombres de los campos se leen con
+ * persona abrió en su navegador. Los nombres de los campos se leen con
  * varias variantes porque no están documentados.
  *
  * Es puro: lo prueba el runner de Node.
@@ -109,22 +109,24 @@ export function estadoCrmDesdeShalom(estadoShalom: string, actual: Estado): Esta
   return (AVANCE[destino] ?? 0) > avanceActual || destino === "EN DEVOLUCIÓN" ? destino : null;
 }
 
+/** El nombre de la cookie de sesión de Shalom PRO. */
+export const COOKIE_DE_SESION = "enviashalom_session";
+
 /**
- * La cookie "Recuérdame" de Shalom PRO tal como se copió → el par nombre=valor.
- * Se acepta el valor solo, "nombre=valor" o la línea entera de las cookies.
+ * La cookie de sesión de Shalom PRO tal como se copió → "nombre=valor".
+ * Se acepta el valor solo (se toma como enviashalom_session), "nombre=valor"
+ * o la línea entera de las cookies (se quedan la de sesión y la de
+ * "Recuérdame", si la hay).
  */
-export function cookieRecuerdame(pegado: string): string | null {
+export function cookieDeSesion(pegado: string): string | null {
   const limpio = pegado.trim().replace(/^cookie:\s*/i, "");
   if (!limpio) return null;
-  const par = limpio
+  const pares = limpio
     .split(/;\s*/)
     .map((p) => p.trim())
-    .find((p) => /^remember_web_[a-f0-9]+=/i.test(p));
-  if (par) return par;
-  if (/^[^=\s;]+$/.test(limpio) || /^ey/i.test(limpio)) {
-    // Sólo el valor: el nombre es el de Laravel para la sesión web.
-    return `remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=${limpio}`;
-  }
+    .filter((p) => p.startsWith(`${COOKIE_DE_SESION}=`) || /^remember_web_[a-f0-9]+=/i.test(p));
+  if (pares.length) return pares.join("; ");
+  if (/^[^=\s;]+$/.test(limpio)) return `${COOKIE_DE_SESION}=${limpio}`;
   return null;
 }
 
