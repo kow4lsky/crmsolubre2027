@@ -1,7 +1,9 @@
 "use client";
 
 import JSZip from "jszip";
-import { Download } from "lucide-react";
+
+import { registrarPedidosEnShalom } from "@/app/actions";
+import { Download, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { BOTON_SECUNDARIO } from "@/components/pedidos-ui";
@@ -17,6 +19,7 @@ import {
   type FilaShalom,
 } from "@/lib/envios-masivos";
 import type { Pedido } from "@/lib/pedidos";
+import type { ResultadoShalom } from "@/lib/shalom-server";
 
 /** Lo que se eligió a mano para una dirección: la próxima vez se propone solo. */
 const MEMORIA = "crm-solubre:agencias-shalom";
@@ -45,7 +48,17 @@ type Fila = { pedido: Pedido; documento: string; telefono: string; destino: stri
  * "Archivo para Shalom": los pedidos elegidos → la plantilla de registro
  * masivo de Shalom, lista para subir en pro.shalom.pe.
  */
-export function EnvioShalom({ pedidos, onClose, onNotice }: { pedidos: Pedido[]; onClose: () => void; onNotice: (mensaje: string) => void }) {
+export function EnvioShalom({
+  pedidos,
+  onClose,
+  onNotice,
+  onRegistrado,
+}: {
+  pedidos: Pedido[];
+  onClose: () => void;
+  onNotice: (mensaje: string) => void;
+  onRegistrado?: () => void;
+}) {
   const deShalom = useMemo(() => pedidos.filter((p) => (p.courier ?? "").toUpperCase().includes("SHALOM")), [pedidos]);
   const otros = pedidos.length - deShalom.length;
 
@@ -68,28 +81,35 @@ export function EnvioShalom({ pedidos, onClose, onNotice }: { pedidos: Pedido[];
     });
   });
   const [generando, setGenerando] = useState(false);
+  const [resultado, setResultado] = useState<ResultadoShalom | null>(null);
+  const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
 
   const cambiar = (i: number, cambio: Partial<Fila>) => setFilas((actual) => actual.map((f, j) => (j === i ? { ...f, ...cambio } : f)));
 
   const problemas = filas.map((f) => problemasDeFilaShalom(f, AGENCIAS_SHALOM));
   const conProblemas = problemas.filter((p) => p.length > 0).length;
 
+  /** El Excel de Shalom con los envíos de la tabla (y recuerda las agencias elegidas). */
+  const armarArchivo = async () => {
+    const memoria = leerMemoria();
+    for (const f of filas) if (f.destino) memoria[claveDe(f.pedido)] = f.destino;
+    guardarMemoria(memoria);
+
+    const respuesta = await fetch("/plantillas/shalom-masivo.xlsx");
+    if (!respuesta.ok) throw new Error("No encontré la plantilla de Shalom.");
+    const zip = await JSZip.loadAsync(await respuesta.arrayBuffer());
+    const ruta = "xl/worksheets/sheet1.xml";
+    const hoja = await zip.file(ruta)?.async("string");
+    if (!hoja) throw new Error("La plantilla de Shalom no tiene la hoja de envíos.");
+    const datos: FilaShalom[] = filas.map((f) => ({ documento: f.documento, telefono: f.telefono, destino: f.destino, caja: f.caja }));
+    zip.file(ruta, llenarHojaShalom(hoja, datos));
+    return zip;
+  };
+
   const descargarArchivo = async () => {
     setGenerando(true);
     try {
-      // Lo elegido a mano se recuerda para la próxima.
-      const memoria = leerMemoria();
-      for (const f of filas) if (f.destino) memoria[claveDe(f.pedido)] = f.destino;
-      guardarMemoria(memoria);
-
-      const respuesta = await fetch("/plantillas/shalom-masivo.xlsx");
-      if (!respuesta.ok) throw new Error("No encontré la plantilla de Shalom.");
-      const zip = await JSZip.loadAsync(await respuesta.arrayBuffer());
-      const ruta = "xl/worksheets/sheet1.xml";
-      const hoja = await zip.file(ruta)?.async("string");
-      if (!hoja) throw new Error("La plantilla de Shalom no tiene la hoja de envíos.");
-      const datos: FilaShalom[] = filas.map((f) => ({ documento: f.documento, telefono: f.telefono, destino: f.destino, caja: f.caja }));
-      zip.file(ruta, llenarHojaShalom(hoja, datos));
+      const zip = await armarArchivo();
       const archivo = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(archivo);
       const enlace = document.createElement("a");
@@ -102,6 +122,29 @@ export function EnvioShalom({ pedidos, onClose, onNotice }: { pedidos: Pedido[];
       onNotice(`Listo: ${filas.length} envíos en el archivo para Shalom.`);
     } catch (falla) {
       onNotice(falla instanceof Error ? falla.message : "No se pudo armar el archivo.");
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  const registrar = async () => {
+    setGenerando(true);
+    setResultado(null);
+    setErrorRegistro(null);
+    try {
+      const zip = await armarArchivo();
+      const base64 = await zip.generateAsync({ type: "base64" });
+      const r = await registrarPedidosEnShalom(
+        base64,
+        filas.map((f) => f.pedido.id),
+      );
+      if (!r.ok) setErrorRegistro(r.error);
+      else {
+        setResultado(r.resultado);
+        onRegistrado?.();
+      }
+    } catch (falla) {
+      setErrorRegistro(falla instanceof Error ? falla.message : "No se pudo registrar en Shalom.");
     } finally {
       setGenerando(false);
     }
@@ -199,13 +242,52 @@ export function EnvioShalom({ pedidos, onClose, onNotice }: { pedidos: Pedido[];
           En el archivo van: origen AV JOSE LEAL CDRA 6, cantidad 1 y las medidas de cada caja. La clave y el &quot;No deseo&quot; de cobro seguro se
           confirman en Shalom al subirlo.
         </p>
+        {errorRegistro && (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{errorRegistro}</p>
+        )}
+        {resultado && (
+          <div className="space-y-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-400/30 dark:bg-emerald-400/10">
+            <p className="font-semibold">
+              Shalom: {resultado.mensaje} · {resultado.registrados.length} pedido(s) ya tienen tracking, clave y costo en el CRM.
+            </p>
+            {resultado.registrados.length > 0 && (
+              <ul className="grid gap-1 text-xs sm:grid-cols-2">
+                {resultado.registrados.map((r) => (
+                  <li key={r.codigo}>
+                    ✅ <b>{r.codigo}</b> · {r.tracking}
+                    {r.costo !== null && ` · S/ ${r.costo.toFixed(2)}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {resultado.conError.length > 0 && (
+              <p className="text-xs text-red-800 dark:text-red-200">
+                ⚠️ Shalom no aceptó: {resultado.conError.join(" · ")}. Corrígelos en Shalom PRO (registro masivo) o aquí y vuelve a intentar.
+              </p>
+            )}
+            {resultado.sinTracking.length > 0 && (
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                ⚠️ Todavía sin tracking: {resultado.sinTracking.join(", ")}. Shalom a veces tarda: se completan solos en la próxima actualización
+                (cada 12 horas o con &quot;Actualizar Shalom&quot;).
+              </p>
+            )}
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-end gap-2">
           {conProblemas > 0 && <span className="mr-auto text-xs font-semibold text-red-700 dark:text-red-300">{conProblemas} envío(s) con datos por corregir</span>}
           <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>
             Cerrar
           </button>
-          <button type="button" disabled={generando || filas.length === 0 || conProblemas > 0} onClick={descargarArchivo} className={PRIMARY_BUTTON_CLASS}>
-            <Download className="size-4" /> {generando ? "Armando…" : `Descargar archivo (${filas.length})`}
+          <button type="button" disabled={generando || filas.length === 0 || conProblemas > 0} onClick={descargarArchivo} className={BOTON_SECUNDARIO}>
+            <Download className="size-4" /> Descargar archivo
+          </button>
+          <button
+            type="button"
+            disabled={generando || filas.length === 0 || conProblemas > 0 || !!resultado}
+            onClick={registrar}
+            className={PRIMARY_BUTTON_CLASS}
+          >
+            <Send className="size-4" /> {generando ? "Registrando en Shalom…" : `Registrar en Shalom (${filas.length})`}
           </button>
         </div>
       </div>
