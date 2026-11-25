@@ -4276,10 +4276,23 @@ export async function registrarPedidosEnSwayp(
 ): Promise<{ ok: true; resultado: import("@/lib/swayp-server").ResultadoSwayp } | { ok: false; error: string }> {
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
-  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden registrar en Swayp." };
+  if (!["admin", "encargado", "asesor"].includes(scope.rolVenta)) return { ok: false, error: "Tu usuario no puede registrar en Swayp." };
   if (!Array.isArray(filas) || filas.length === 0) return { ok: false, error: "No hay pedidos para registrar." };
+  let permitidas = filas.slice(0, 200);
+  // Una asesora sólo registra pedidos que ve (los suyos): se pregunta con su
+  // propia sesión, así manda la misma regla de la base.
+  if (scope.rolVenta === "asesor") {
+    const { data } = await scope.supabase
+      .from("pedidos")
+      .select("id")
+      .eq("workspace_id", scope.workspaceId)
+      .in("id", permitidas.map((f) => f.pedidoId));
+    const visibles = new Set((data ?? []).map((p) => p.id as string));
+    permitidas = permitidas.filter((f) => visibles.has(f.pedidoId));
+    if (!permitidas.length) return { ok: false, error: "Solo puedes registrar en Swayp tus propios pedidos." };
+  }
   const { registrarEnSwayp } = await import("@/lib/swayp-server");
-  return registrarEnSwayp(getSupabaseAdmin(), scope.workspaceId, filas.slice(0, 200));
+  return registrarEnSwayp(getSupabaseAdmin(), scope.workspaceId, permitidas);
 }
 
 /** "Actualizar estados de Shalom" sin esperar las 12 horas. */

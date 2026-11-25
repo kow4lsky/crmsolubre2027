@@ -411,7 +411,7 @@ export function PedidosPanel({
             Generar etiqueta
           </button>
         )}
-        {/* Asesores: sólo Limpiar selección y los dos despachos. */}
+        {/* Asesores: Limpiar selección, los dos despachos y Enviar a Swayp. */}
         {puedeReporte && (
           <button type="button" disabled={!seleccion.size} onClick={exportarSms} className={BOTON_SECUNDARIO}>
             SMS
@@ -423,7 +423,7 @@ export function PedidosPanel({
         <button type="button" disabled={!seleccion.size} onClick={() => setDespacho("provincia")} className={BOTON_SECUNDARIO}>
           Despacho Provincia
         </button>
-        {puedeReporte && (
+        {(puedeReporte || rolVenta === "asesor") && (
           <button type="button" disabled={!seleccion.size} onClick={() => setVerSwayp(true)} className={BOTON_SECUNDARIO}>
             Enviar a Swayp
           </button>
@@ -589,7 +589,7 @@ export function PedidosPanel({
       {verSwayp && (
         <EnvioSwayp
           pedidos={seleccionados}
-          puedeRegistrar={esAdmin || rolVenta === "encargado"}
+          puedeRegistrar={esAdmin || rolVenta === "encargado" || rolVenta === "asesor"}
           onClose={() => setVerSwayp(false)}
           onNotice={onNotice}
           onRegistrado={recargar}
