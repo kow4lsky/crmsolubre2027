@@ -84,27 +84,20 @@ export async function registrarEnSwayp(
   workspaceId: string,
   filas: FilaSwayp[],
 ): Promise<{ ok: true; resultado: ResultadoSwayp } | { ok: false; error: string }> {
-  const conexion = await credenciales("swayp", [
-    "api_token",
-    "base_url",
-    "email",
-    "remitente_ruc",
-    "remitente_direccion",
-    "remitente_telefono",
-    "remitente_email",
-    "remitente_ubigeo",
-  ]);
+  // Como en la carga masiva, los datos del remitente son opcionales: Swayp
+  // completa lo que falte con los de la cuenta.
+  const conexion = await credenciales("swayp", ["api_token", "base_url", "email"]);
   if (!conexion.ok) return { ok: false, error: conexion.error };
   const v = conexion.valores;
   const base = v.base_url.replace(/\/+$/, "");
   const headers = { Authorization: `Bearer ${v.api_token}`, email: v.email, "x-country": "PE", "Content-Type": "application/json" };
   const remitente: RemitenteSwayp = {
     nombre: v.remitente_nombre || "SOLUBRE",
-    nit: v.remitente_ruc,
-    direccion: v.remitente_direccion,
-    telefono: v.remitente_telefono.replace(/\D/g, ""),
-    email: v.remitente_email,
-    ubigeo: v.remitente_ubigeo.replace(/\D/g, ""),
+    nit: v.remitente_ruc ?? "",
+    direccion: v.remitente_direccion ?? "",
+    telefono: (v.remitente_telefono ?? "").replace(/\D/g, ""),
+    email: v.remitente_email || v.email,
+    ubigeo: (v.remitente_ubigeo ?? "").replace(/\D/g, ""),
     idBodega: Number(v.id_bodega) || null,
   };
   const paquete = medidasDe(v.paquete_medidas, v.paquete_peso);

@@ -183,6 +183,8 @@ export function cuerpoGuiaSwayp(
     valorRecaudo: f.recaudo.toFixed(2),
     isExpress: f.servicio === "EXPRESS",
   };
+  // Lo que no se tiene no se manda (como en el Excel): Swayp usa los datos de la cuenta.
+  for (const [clave, valor] of Object.entries(cuerpo)) if (valor === "") delete cuerpo[clave];
   if (remitente.idBodega) cuerpo.idWarehouse = remitente.idBodega;
   if (productos?.length) cuerpo.productos = productos;
   return cuerpo;

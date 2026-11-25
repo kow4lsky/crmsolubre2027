@@ -247,7 +247,7 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
         con: "webhook_secret",
       },
       {
-        texto: "Opcional: en Opciones avanzadas puedes cargar el token de Swayp API, la URL base y el correo de la cuenta. Con eso el CRM trae el detalle de cada guía y ubica por celular las que no tienen guía en el CRM. Para crear guías desde Pedidos (\"Registrar en Swayp\"), completa también los datos del remitente y del paquete. Después, guarda.",
+        texto: "Opcional: en Opciones avanzadas puedes cargar el token de Swayp API, la URL base y el correo de la cuenta. Con eso el CRM trae el detalle de cada guía y ubica por celular las que no tienen guía en el CRM. Los datos del remitente y del paquete son opcionales: si faltan, Swayp usa los de tu cuenta. Después, guarda.",
         con: "guardar",
       },
     ],

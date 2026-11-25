@@ -81,5 +81,11 @@ test("el cuerpo de la guía para la API de Swayp", () => {
   assert.match(String(cuerpo.observaciones), /^Pedido WED236100/);
   assert.deepEqual(cuerpo.productos, [{ cantidad: 3, codbar: "SOLUBRE", nombre: "SOLUBRE" }]);
   assert.equal(productosParaSwayp([{ producto: "BROCHAS", cantidad: 1 }], new Map()), null);
+  // Sin datos de remitente, como en el Excel: no se mandan vacíos.
+  const minimo = cuerpoGuiaSwayp(fila, { nombre: "SOLUBRE", nit: "", direccion: "", telefono: "", email: "cuenta@x.pe", ubigeo: "" }, medidasDe("", ""));
+  assert.equal("nitRemitente" in minimo, false);
+  assert.equal("ciudadRemitente" in minimo, false);
+  assert.equal(minimo.nombreRemitente, "SOLUBRE");
+  assert.equal(minimo.emailDestinatario, "cuenta@x.pe");
   assert.deepEqual(problemasDeFilaSwayp({ ...fila, distrito: "", telefono: "123" }), ["celular de 9 dígitos", "distrito"]);
 });
