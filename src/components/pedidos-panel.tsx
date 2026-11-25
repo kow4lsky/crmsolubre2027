@@ -23,6 +23,7 @@ import { EnvioOlva } from "@/components/envio-olva";
 import { EnvioShalom } from "@/components/envio-shalom";
 import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoAjeno } from "@/components/pedido-ajeno";
+import { IndicadoresPedidos } from "@/components/indicadores-pedidos";
 import { PedidoForm } from "@/components/pedido-form";
 import { BOTON_SECUNDARIO, EstadoChip, EstadoUnico, descargar } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
@@ -297,6 +298,8 @@ export function PedidosPanel({
 
   return (
     <div className="space-y-4">
+      <IndicadoresPedidos workspaceId={workspaceId} recarga={recarga} onAbrir={(p) => setAbierto(p)} />
+
       {/* Barra de arriba: buscar y acciones generales */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1">
