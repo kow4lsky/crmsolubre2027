@@ -40,6 +40,7 @@ type PedidoParaSwayp = {
   pedido: string | null;
   nota: string | null;
   envio: string | null;
+  fecha_registro?: string | null;
 };
 
 const redondear = (n: number) => Math.round(n * 100) / 100;
@@ -59,7 +60,8 @@ export function filaSwaypDesdePedido(p: PedidoParaSwayp, hoy: string): FilaSwayp
     adicional: "",
     recaudo: Math.max(0, redondear(Number(p.monto ?? 0) - Number(p.adelanto ?? 0))),
     contenido: (p.pedido ?? "").trim(),
-    fecha: hoy,
+    // La fecha de entrega es la F.REG del pedido (como en el Excel de siempre).
+    fecha: (p.fecha_registro ?? "").slice(0, 10) || hoy,
     observaciones: (p.nota ?? "").trim(),
     servicio: /express/i.test(p.envio ?? "") ? "EXPRESS" : "NORMAL",
   };
@@ -158,6 +160,8 @@ export function cuerpoGuiaSwayp(
 ): Record<string, unknown> {
   const ubigeo = DISTRITOS_LIMA.find((d) => d.nombre === f.distrito)?.ubigeo ?? "";
   const cuerpo: Record<string, unknown> = {
+    // El código del CRM, como la columna "id" del Excel de carga masiva.
+    id: f.codigo,
     nombreRemitente: remitente.nombre,
     nitRemitente: remitente.nit,
     direccionRemitente: remitente.direccion,
@@ -182,6 +186,10 @@ export function cuerpoGuiaSwayp(
     valorDeclarado: f.recaudo.toFixed(2),
     valorRecaudo: f.recaudo.toFixed(2),
     isExpress: f.servicio === "EXPRESS",
+    servicio: f.servicio,
+    items: "1",
+    // A las 9 a. m. de Lima del día de la F.REG.
+    fechaEntrega: f.fecha ? `${f.fecha}T09:00:00-05:00` : "",
   };
   // Lo que no se tiene no se manda (como en el Excel): Swayp usa los datos de la cuenta.
   for (const [clave, valor] of Object.entries(cuerpo)) if (valor === "") delete cuerpo[clave];
