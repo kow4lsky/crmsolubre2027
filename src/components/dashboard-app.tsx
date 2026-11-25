@@ -3,6 +3,7 @@
 import {
   Archive,
   BarChart3,
+  Boxes,
   Bot,
   CalendarDays,
   ChartPie,
@@ -51,6 +52,7 @@ import { AgentsPanel } from "@/components/agents-panel";
 import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
 import { AnaliticaPanel } from "@/components/analitica-panel";
+import { AlertasDeStock, InventarioPanel } from "@/components/inventario-panel";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
 import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
@@ -104,6 +106,7 @@ type View =
   | "Pedidos pendientes"
   | "Autorizaciones"
   | "Analítica"
+  | "Inventario"
   | "Resumen"
   | "Conversaciones"
   | "Pipeline"
@@ -130,6 +133,7 @@ const VIEW_SLUGS: Record<View, string> = {
   "Pedidos pendientes": "pendientes",
   Autorizaciones: "autorizaciones",
   Analítica: "analitica",
+  Inventario: "inventario",
   Resumen: "resumen",
   Conversaciones: "conversaciones",
   Pipeline: "pipeline",
@@ -163,6 +167,7 @@ const NAVIGATION: {
   { label: "Pedidos pendientes", icon: Sparkles },
   { label: "Autorizaciones", icon: ShieldCheck },
   { label: "Analítica", icon: BarChart3 },
+  { label: "Inventario", icon: Boxes },
   { label: "Resumen", icon: LayoutDashboard },
   { label: "Conversaciones", icon: MessageSquareMore },
   { label: "Pipeline", icon: LineChart },
@@ -513,6 +518,9 @@ function Workspace({
                 : "mx-auto max-w-[1600px] p-5 sm:p-8"
           }
         >
+          {(context.rolVenta === "admin" || context.rolVenta === "encargado") && view !== "Inventario" && view !== "Conversaciones" && (
+            <AlertasDeStock workspaceId={context.workspaceId} onAbrir={() => selectView("Inventario")} />
+          )}
           {view === "Pedidos" ? (
             <PedidosPanel
               workspaceId={context.workspaceId}
@@ -530,6 +538,8 @@ function Workspace({
             />
           ) : view === "Analítica" ? (
             <AnaliticaPanel workspaceId={context.workspaceId} rolVenta={context.rolVenta} onNotice={notify} />
+          ) : view === "Inventario" ? (
+            <InventarioPanel workspaceId={context.workspaceId} rolVenta={context.rolVenta} timezone={data.timezone} onNotice={notify} />
           ) : view === "Autorizaciones" ? (
             <AutorizacionesPanel
               workspaceId={context.workspaceId}
