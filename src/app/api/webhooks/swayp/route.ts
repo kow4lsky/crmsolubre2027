@@ -132,6 +132,19 @@ export async function POST(request: NextRequest) {
     await anotarConexion(admin, "SWAYP", `No se pudo actualizar el pedido ${pedido.codigo}: ${error.message}`, { workspaceId: workspace.id });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // "Devolución confirmada": la mercadería volvió a la bodega de Swayp.
+  if (aviso.codigo === "12") {
+    const { error: errorRetorno } = await admin.rpc("confirmar_retorno", {
+      ws: workspace.id,
+      pedido: pedido.id,
+      nota: "Swayp confirmó la devolución en su bodega",
+    });
+    if (errorRetorno && !/confirmar_retorno|does not exist/.test(errorRetorno.message)) {
+      await anotarConexion(admin, "SWAYP", `No se pudo devolver al inventario el pedido ${pedido.codigo}: ${errorRetorno.message}`, {
+        workspaceId: workspace.id,
+      });
+    }
+  }
   return NextResponse.json({ ok: true, codigo: pedido.codigo, estado: nuevo ?? pedido.estado });
 }
 

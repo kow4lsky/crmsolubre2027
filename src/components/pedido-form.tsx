@@ -501,7 +501,7 @@ export function PedidoForm({
             )}
           </p>
           <p className="mt-1 text-xs text-neutral-500">
-            Sale del inventario cuando el pedido de Lima está ENTREGADO, o el de Provincia pasa a EN TRÁNSITO.
+            Sale del almacén cuando el pedido sale (EN TRÁNSITO) y se descuenta del inventario recién cuando se entrega. Si no se entrega, queda &quot;por regresar&quot;.
           </p>
         </fieldset>
 
