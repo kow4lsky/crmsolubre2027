@@ -39,15 +39,21 @@ const entero = (texto: string | undefined) => {
  * bodegas si un producto aparece en más de una.
  */
 export function leerReporteSwayp(filas: string[][]): FilaSwayp[] {
-  const iTitulos = filas.findIndex((f) => f.some((c) => /NOMBRE/.test(limpiar(c))) && f.some((c) => /CANTIDAD|DISPONIBLE/.test(limpiar(c))));
-  if (iTitulos < 0) throw new Error("No encontré las columnas del reporte de Swayp (Código barras, Nombre, Cantidad).");
-  const titulos = filas[iTitulos].map(limpiar);
+  // El Excel de "Exportar" viene en inglés (Product, Barcode, Quantity,
+  // InShipping, InTransit, InReturn); la pantalla, en español.
+  const iTitulos = filas.findIndex(
+    (f) => f.some((c) => /NOMBRE|PRODUCT/.test(limpiar(c))) && f.some((c) => /CANTIDAD|DISPONIBLE|QUANTITY|AVAILABLE/.test(limpiar(c))),
+  );
+  if (iTitulos < 0) throw new Error("No encontré las columnas del reporte de Swayp (Producto, Código de barras, Cantidad).");
+  const titulos = filas[iTitulos].map((t) => limpiar(t).replace(/\s/g, ""));
   const col = (...nombres: RegExp[]) => titulos.findIndex((t) => nombres.some((n) => n.test(t)));
-  const cCodigo = col(/CODIGO/, /BARRAS/, /SKU/);
-  const cNombre = col(/^NOMBRE/, /PRODUCTO/);
-  const cCantidad = col(/^CANTIDAD/, /STOCK/) >= 0 ? col(/^CANTIDAD/, /STOCK/) : col(/DISPONIBLE/);
-  const cTransito = col(/TRANSITO/);
-  const cDevolucion = col(/DEVOLUCION/);
+  const cCodigo = col(/CODIGO/, /BARRAS/, /BARCODE/, /SKU/);
+  const cNombre = col(/^NOMBRE/, /^PRODUCTO?$/, /^PRODUCT/);
+  const cCantidadExacta = col(/^CANTIDAD/, /^QUANTITY/, /^STOCK/);
+  const cCantidad = cCantidadExacta >= 0 ? cCantidadExacta : col(/DISPONIBLE/, /AVAILABLE/);
+  const cTransito = col(/TRANSITO/, /INTRANSIT/);
+  const cEnvio = col(/INSHIPPING/);
+  const cDevolucion = col(/DEVOLUCION/, /INRETURN/);
 
   const porCodigo = new Map<string, FilaSwayp>();
   for (const fila of filas.slice(iTitulos + 1)) {
@@ -59,7 +65,7 @@ export function leerReporteSwayp(filas: string[][]): FilaSwayp[] {
       codigo,
       nombre: nombre || codigo,
       cantidad: entero(fila[cCantidad]) + (previo?.cantidad ?? 0),
-      transito: (cTransito >= 0 ? entero(fila[cTransito]) : 0) + (previo?.transito ?? 0),
+      transito: (cTransito >= 0 ? entero(fila[cTransito]) : 0) + (cEnvio >= 0 ? entero(fila[cEnvio]) : 0) + (previo?.transito ?? 0),
       devolucion: (cDevolucion >= 0 ? entero(fila[cDevolucion]) : 0) + (previo?.devolucion ?? 0),
     };
     porCodigo.set(limpiar(codigo), nueva);
