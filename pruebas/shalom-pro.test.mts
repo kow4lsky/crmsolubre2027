@@ -8,7 +8,7 @@ import test from "node:test";
 
 import { ClienteShalomPro, SesionVencida, historial, registrarMasivo } from "../src/lib/shalom-pro.ts";
 import {
-  cookieRecuerdame,
+  cookieDeSesion,
   emparejarPorDni,
   estadoCrmDesdeShalom,
   etiquetaShalom,
@@ -17,12 +17,12 @@ import {
   trackingShalom,
 } from "../src/lib/shalom-envios.ts";
 
-test("lee la cookie Recuérdame como venga pegada", () => {
-  assert.equal(cookieRecuerdame("remember_web_abc123=eyJpdiI6"), "remember_web_abc123=eyJpdiI6");
-  assert.equal(cookieRecuerdame("XSRF-TOKEN=x; remember_web_abc123=eyJ9; enviashalom_session=s"), "remember_web_abc123=eyJ9");
-  assert.equal(cookieRecuerdame("eyJpdiI6IkFCQyJ9"), "remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=eyJpdiI6IkFCQyJ9");
-  assert.equal(cookieRecuerdame("  "), null);
-  assert.equal(cookieRecuerdame("hola mundo"), null);
+test("lee la cookie de sesión como venga pegada", () => {
+  assert.equal(cookieDeSesion("eyJpdiI6IkFCQyJ9"), "enviashalom_session=eyJpdiI6IkFCQyJ9");
+  assert.equal(cookieDeSesion("enviashalom_session=eyJ9"), "enviashalom_session=eyJ9");
+  assert.equal(cookieDeSesion("XSRF-TOKEN=x; remember_web_abc123=eyJ9; enviashalom_session=s"), "remember_web_abc123=eyJ9; enviashalom_session=s");
+  assert.equal(cookieDeSesion("  "), null);
+  assert.equal(cookieDeSesion("hola mundo"), null);
 });
 
 test("traduce un envío de Shalom y su estado", () => {
@@ -74,10 +74,10 @@ function shalomFalso() {
     req.on("data", (c) => (cuerpo += c));
     req.on("end", () => {
       if (req.url === "/sanctum/csrf-cookie") {
-        res.writeHead(204, { "Set-Cookie": ["XSRF-TOKEN=tok%3D1; path=/", "enviashalom_session=s1; path=/; httponly"] });
+        res.writeHead(204, { "Set-Cookie": ["XSRF-TOKEN=tok%3D1; path=/"] });
         return res.end();
       }
-      if (!cookie.includes("remember_web_x=valido")) return sobre(res, null, 401);
+      if (!cookie.includes("enviashalom_session=valido")) return sobre(res, null, 401);
       if (req.url === "/api/v1/auth/me") return sobre(res, { email: "x@y" });
       if (req.url === "/api/v1/service-orders" && req.method === "GET") return sobre(res, borradores);
       if (req.url === "/api/v1/service-orders/import") {
@@ -102,7 +102,7 @@ test("registro masivo: sube, pone la clave sólo a los nuevos sin error y los en
   await new Promise<void>((r) => servidor.listen(0, r));
   const base = `http://127.0.0.1:${(servidor.address() as { port: number }).port}`;
   try {
-    const cliente = new ClienteShalomPro("remember_web_x=valido", base);
+    const cliente = new ClienteShalomPro("enviashalom_session=valido", base);
     await cliente.abrir();
     const r = await registrarMasivo(cliente, new Uint8Array([1, 2, 3]), "1126");
     assert.deepEqual(r.enviados.map((b) => b.id), [2, 4]);
@@ -121,8 +121,8 @@ test("si la sesión venció, lo dice claro", async () => {
   await new Promise<void>((r) => servidor.listen(0, r));
   const base = `http://127.0.0.1:${(servidor.address() as { port: number }).port}`;
   try {
-    const cliente = new ClienteShalomPro("remember_web_x=vencido", base);
-    await assert.rejects(cliente.abrir(), (e: Error) => e instanceof SesionVencida && /Recuérdame/.test(e.message));
+    const cliente = new ClienteShalomPro("enviashalom_session=vencido", base);
+    await assert.rejects(cliente.abrir(), (e: Error) => e instanceof SesionVencida && /enviashalom_session/.test(e.message));
   } finally {
     servidor.close();
   }

@@ -3,7 +3,7 @@
  *
  * Shalom no tiene API pública (lo confirmó su área comercial). El CRM usa las
  * mismas llamadas que la web de Shalom PRO, con la sesión que la persona abrió
- * en su navegador con "Recuérdame": el inicio de sesión (que tiene reCAPTCHA)
+ * en su navegador (la cookie enviashalom_session): el inicio de sesión (que tiene reCAPTCHA)
  * lo hace siempre ella; el CRM nunca guarda la contraseña ni salta el captcha.
  *
  * Es puro (sólo fetch): lo prueba el runner de Node contra un servidor falso.
@@ -50,8 +50,9 @@ export class ClienteShalomPro {
   private abierta = false;
   private base: string;
 
-  constructor(cookieRecuerdame: string, base = SHALOM_PRO) {
-    this.frasco = new Frasco(cookieRecuerdame);
+  constructor(cookies: string, base = SHALOM_PRO) {
+    this.frasco = new Frasco("");
+    for (const par of cookies.split(/;\s*/)) this.frasco.agregar(par);
     this.base = base;
   }
 
@@ -99,7 +100,7 @@ export class ClienteShalomPro {
     }
     if (respuesta.status === 401 || (respuesta.status >= 300 && respuesta.status < 400)) {
       throw new SesionVencida(
-        "La sesión de Shalom PRO venció o se cerró. Entra a pro.shalom.pe con \"Recuérdame\" marcado y vuelve a copiar la cookie en Configuración → Conexiones → Shalom PRO.",
+        "La sesión de Shalom PRO venció o se cerró. Entra a pro.shalom.pe, inicia sesión y vuelve a copiar la cookie enviashalom_session en Configuración → Conexiones → Shalom PRO.",
       );
     }
     const textoRespuesta = await respuesta.text();

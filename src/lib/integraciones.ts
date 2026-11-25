@@ -314,22 +314,22 @@ export const DEFINICIONES: Record<Integracion, DefinicionDeIntegracion> = {
       "Registra en Shalom los envíos que elijas desde Pedidos y trae al CRM el tracking, la clave y el costo. Cada 12 horas actualiza el estado de los envíos de Shalom. Usa tu sesión de Shalom PRO: tu contraseña nunca se guarda.",
     pasos: [
       {
-        texto: "En tu computadora, con Chrome, entra a https://pro.shalom.pe con tu usuario y contraseña, y marca \"Recuérdame\" antes de Iniciar sesión.",
+        texto: "En tu computadora, con Chrome, entra a https://pro.shalom.pe con tu usuario y contraseña.",
       },
       {
-        texto: "Ya adentro, aprieta F12 → pestaña Application (o Aplicación) → a la izquierda Cookies → https://pro.shalom.pe. Busca la fila que empieza con remember_web_, haz doble clic en su Value (Valor), cópialo entero y pégalo acá.",
+        texto: "Ya adentro, aprieta F12 → pestaña Application (o Aplicación) → a la izquierda Cookies → https://pro.shalom.pe. En Filter escribe enviashalom, haz doble clic en el Value (Valor) de la fila enviashalom_session, cópialo entero y pégalo acá. Después no toques \"Cerrar sesión\" en Shalom PRO: eso apaga la sesión del CRM (cerrar la pestaña sí se puede).",
         con: "sesion",
       },
       { texto: "La clave para recoger en agencia que se pone a todos los envíos.", con: "clave" },
       { texto: "Guarda.", con: "guardar" },
       {
-        texto: "Prueba en Pedidos: selecciona envíos de Shalom → Archivo para Shalom → Registrar en Shalom. Si un día dice que la sesión venció, repite los pasos 1 y 2.",
+        texto: "Prueba en Pedidos: selecciona envíos de Shalom → Archivo para Shalom → Registrar en Shalom. El CRM mantiene viva la sesión entrando a Shalom cada 20 minutos. Si un día dice que la sesión venció, repite los pasos 1 y 2.",
       },
     ],
     campos: [
       {
         clave: "sesion",
-        etiqueta: "Cookie de sesión (remember_web_…)",
+        etiqueta: "Cookie de sesión (enviashalom_session)",
         secreto: true,
         requerido: true,
         env: "SHALOM_PRO_SESION",
