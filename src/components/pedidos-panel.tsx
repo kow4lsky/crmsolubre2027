@@ -23,6 +23,7 @@ import { EnvioOlva } from "@/components/envio-olva";
 import { EnvioShalom } from "@/components/envio-shalom";
 import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoAjeno } from "@/components/pedido-ajeno";
+import { EnvioSwayp } from "@/components/envio-swayp";
 import { IndicadoresPedidos } from "@/components/indicadores-pedidos";
 import { PedidoForm } from "@/components/pedido-form";
 import { BOTON_SECUNDARIO, EstadoChip, EstadoUnico, descargar } from "@/components/pedidos-ui";
@@ -127,6 +128,7 @@ export function PedidosPanel({
   const [ajenos, setAjenos] = useState<Pedido[]>([]);
   const [verAjeno, setVerAjeno] = useState<Pedido | null>(null);
   const [verShalom, setVerShalom] = useState(false);
+  const [verSwayp, setVerSwayp] = useState(false);
   const [actualizandoShalom, setActualizandoShalom] = useState(false);
   const [verOlva, setVerOlva] = useState(false);
 
@@ -422,6 +424,11 @@ export function PedidosPanel({
           Despacho Provincia
         </button>
         {puedeReporte && (
+          <button type="button" disabled={!seleccion.size} onClick={() => setVerSwayp(true)} className={BOTON_SECUNDARIO}>
+            Enviar a Swayp
+          </button>
+        )}
+        {puedeReporte && (
           <button type="button" disabled={!seleccion.size} onClick={() => setVerShalom(true)} className={BOTON_SECUNDARIO}>
             Archivo para Shalom
           </button>
@@ -579,6 +586,15 @@ export function PedidosPanel({
 
       {verOlva && <EnvioOlva pedidos={seleccionados} onClose={() => setVerOlva(false)} onNotice={onNotice} />}
 
+      {verSwayp && (
+        <EnvioSwayp
+          pedidos={seleccionados}
+          puedeRegistrar={esAdmin || rolVenta === "encargado"}
+          onClose={() => setVerSwayp(false)}
+          onNotice={onNotice}
+          onRegistrado={recargar}
+        />
+      )}
       {verShalom && <EnvioShalom pedidos={seleccionados} onClose={() => setVerShalom(false)} onNotice={onNotice} onRegistrado={recargar} />}
 
       {verAjeno && <PedidoAjeno workspaceId={workspaceId} pedido={verAjeno} onClose={() => setVerAjeno(null)} />}

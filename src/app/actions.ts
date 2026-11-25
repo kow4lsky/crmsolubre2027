@@ -4270,6 +4270,18 @@ export async function registrarPedidosEnShalom(
   return registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500));
 }
 
+/** "Registrar en Swayp": crea las guías de los pedidos de Lima con la API de Swayp. */
+export async function registrarPedidosEnSwayp(
+  filas: import("@/lib/swayp-envios").FilaSwayp[],
+): Promise<{ ok: true; resultado: import("@/lib/swayp-server").ResultadoSwayp } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden registrar en Swayp." };
+  if (!Array.isArray(filas) || filas.length === 0) return { ok: false, error: "No hay pedidos para registrar." };
+  const { registrarEnSwayp } = await import("@/lib/swayp-server");
+  return registrarEnSwayp(getSupabaseAdmin(), scope.workspaceId, filas.slice(0, 200));
+}
+
 /** "Actualizar estados de Shalom" sin esperar las 12 horas. */
 export async function actualizarShalomAhora(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
   const scope = await requireWorkspace();
