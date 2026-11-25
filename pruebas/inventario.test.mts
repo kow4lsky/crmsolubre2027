@@ -43,6 +43,19 @@ test("lee el reporte de inventario de Swayp", async () => {
   assert.throws(() => leerReporteSwayp([["hola"]]), /columnas/);
 });
 
+test("lee el Excel que exporta Swayp (títulos en inglés)", async () => {
+  const archivo = await excelDePrueba([
+    ["Product", "Barcode", "Company", "Warehouse", "Quantity", "InShipping", "InTransit", "InReturn", "Available"],
+    ["CEPILLO VERDE", "CV", "SOLUBRE", "Bodega Lima", "1636", "2", "19", "3", "1636"],
+    ["SOLUBRE", "SOLUBRE", "SOLUBRE", "Bodega Lima", "84", "0", "50", "7", "84"],
+  ]);
+  const filas = leerReporteSwayp(await leerXlsx(archivo));
+  assert.deepEqual(filas, [
+    { codigo: "CV", nombre: "CEPILLO VERDE", cantidad: 1636, transito: 21, devolucion: 3 },
+    { codigo: "SOLUBRE", nombre: "SOLUBRE", cantidad: 84, transito: 50, devolucion: 7 },
+  ]);
+});
+
 test("cuántos días alcanza", () => {
   assert.equal(diasQueAlcanza(93, 9.1), 10);
   assert.equal(diasQueAlcanza(93, 0), null);
