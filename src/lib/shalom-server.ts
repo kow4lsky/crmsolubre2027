@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { dayKeyInZone } from "@/lib/fechas";
 import { credenciales } from "@/lib/integraciones-server";
+import { anotarConexion } from "@/lib/registro-conexiones";
 import type { Estado } from "@/lib/pedidos";
 import {
   cookieDeSesion,
@@ -28,7 +29,16 @@ const MANTENER_CADA_MS = 20 * 60 * 1000;
 /** Hasta cuántos días atrás se siguen los envíos que todavía no llegan. */
 const DIAS_DE_SEGUIMIENTO = 45;
 
-type PedidoShalom = { id: string; codigo: string; dni: string | null; estado: Estado; tracking: string | null; estado_shalom: string | null };
+type PedidoShalom = {
+  id: string;
+  workspace_id: string;
+  codigo: string;
+  dni: string | null;
+  estado: Estado;
+  tracking: string | null;
+  estado_shalom: string | null;
+};
+const COLUMNAS = "id, workspace_id, codigo, dni, estado, tracking, estado_shalom";
 
 async function cliente(): Promise<{ ok: true; cliente: ClienteShalomPro; clave: string } | { ok: false; error: string }> {
   const conexion = await credenciales("shalom", ["sesion"]);
@@ -52,6 +62,25 @@ async function anotar(supabase: SupabaseClient, pedido: PedidoShalom, envio: Env
   if (nuevo) cambios.estado = nuevo;
   const { error } = await supabase.from("pedidos").update(cambios).eq("id", pedido.id);
   if (error) throw new Error(error.message);
+
+  // Cada estado nuevo de Shalom queda en el historial de envíos del pedido.
+  const etiqueta = etiquetaShalom(envio.estado);
+  if (etiqueta !== pedido.estado_shalom) {
+    const { error: errorEvento } = await supabase.from("envio_eventos").insert({
+      workspace_id: pedido.workspace_id,
+      pedido_id: pedido.id,
+      courier: "SHALOM",
+      guia: trackingShalom(envio),
+      estado_codigo: envio.estado,
+      estado: etiqueta,
+      comentario: [envio.destino && `Destino: ${envio.destino}`, nuevo && `En el CRM: ${pedido.estado} → ${nuevo}`].filter(Boolean).join(" · ") || null,
+      // Un mismo estado de una misma orden no se anota dos veces.
+      entrega_id: `${envio.orden}:${envio.estado}`,
+      costo: envio.costo,
+      datos: envio,
+    });
+    if (errorEvento && errorEvento.code !== "23505") console.warn("[shalom] no se pudo anotar el evento:", errorEvento.message);
+  }
   return nuevo;
 }
 
@@ -74,7 +103,7 @@ export async function mantenerSesionShalom(
   if (!conexion.ok) return { ok: true, omitido: "sin conexión" };
 
   const ahora = Date.now();
-  const { data: estado } = await supabase.from("sincronizaciones").select("ultima_at").eq("clave", "shalom_sesion").maybeSingle();
+  const { data: estado } = await supabase.from("sincronizaciones").select("ultima_at, ultimo_error").eq("clave", "shalom_sesion").maybeSingle();
   const ultima = estado?.ultima_at ? new Date(estado.ultima_at as string).getTime() : null;
   if (!forzar && ultima && ahora - ultima < MANTENER_CADA_MS) return { ok: true, omitido: "hace poco" };
   await supabase
@@ -84,11 +113,14 @@ export async function mantenerSesionShalom(
   try {
     const cuenta = cuentaDe(await conexion.cliente.abrir());
     await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom_sesion");
+    if (estado?.ultimo_error) await anotarConexion(supabase, "SHALOM", `Sesión de Shalom PRO abierta de nuevo${cuenta ? ` (${cuenta})` : ""}.`, { nivel: "info" });
     return { ok: true, cuenta };
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error);
     console.error("[shalom sesión]", mensaje);
     await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "shalom_sesion");
+    // Se anota una vez, no cada 20 minutos mientras siga igual.
+    if (estado?.ultimo_error !== mensaje.slice(0, 500)) await anotarConexion(supabase, "SHALOM", mensaje);
     return { ok: false, error: error instanceof SesionVencida ? mensaje : `No se pudo entrar a Shalom PRO: ${mensaje}` };
   }
 }
@@ -118,7 +150,7 @@ export async function registrarEnShalom(
 
     const { data } = await supabase
       .from("pedidos")
-      .select("id, codigo, dni, estado, tracking, estado_shalom")
+      .select(COLUMNAS)
       .eq("workspace_id", workspaceId)
       .in("id", pedidoIds);
     const pedidos = (data ?? []) as PedidoShalom[];
@@ -137,9 +169,17 @@ export async function registrarEnShalom(
     }
     const sinTracking = pedidos.filter((p) => !pares.has(p.id)).map((p) => p.codigo);
     const conError = registro.conError.map((b) => `${String(b.document_number ?? b.doc_consignatario ?? b.id)}: ${String(b.error)}`);
+    await anotarConexion(
+      supabase,
+      "SHALOM",
+      `Registro masivo: ${registrados.length} con tracking, ${sinTracking.length} sin tracking todavía, ${conError.length} rechazados por Shalom.`,
+      { nivel: conError.length || sinTracking.length ? "aviso" : "info", datos: { registrados, sinTracking, conError }, workspaceId },
+    );
     return { ok: true, resultado: { registrados, sinTracking, conError, mensaje: registro.mensaje } };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    const mensaje = error instanceof Error ? error.message : String(error);
+    await anotarConexion(supabase, "SHALOM", `No se pudo registrar en Shalom: ${mensaje}`, { workspaceId });
+    return { ok: false, error: mensaje };
   }
 }
 
@@ -168,7 +208,7 @@ export async function actualizarEstadosShalom(
     const desde = hace(DIAS_DE_SEGUIMIENTO);
     const { data } = await supabase
       .from("pedidos")
-      .select("id, codigo, dni, estado, tracking, estado_shalom")
+      .select(COLUMNAS)
       .eq("workspace_id", workspace.id)
       .ilike("courier", "%shalom%")
       .in("estado", ["CONFIRMADO", "EN TRÁNSITO", "EN OFICINA"])
@@ -199,11 +239,18 @@ export async function actualizarEstadosShalom(
       actualizados += 1;
     }
     await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom");
+    if (actualizados) {
+      await anotarConexion(supabase, "SHALOM", `Estados de Shalom: ${actualizados} de ${pedidos.length} envíos en camino cambiaron.`, {
+        nivel: "info",
+        workspaceId: workspace.id,
+      });
+    }
     return { ok: true, revisados: pedidos.length, actualizados };
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error);
     console.error("[shalom]", mensaje);
     await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "shalom");
+    await anotarConexion(supabase, "SHALOM", `No se pudieron traer los estados: ${mensaje}`);
     return { ok: false, error: error instanceof SesionVencida ? error.message : `No se pudo consultar Shalom PRO: ${mensaje}` };
   }
 }

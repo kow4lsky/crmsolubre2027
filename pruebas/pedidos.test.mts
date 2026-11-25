@@ -207,3 +207,24 @@ test("VOLVER A LLAMAR y COORDINACIÓN exigen programar la próxima llamada", asy
   assert.equal(faltaParaEstado({ estado: "COORDINACIÓN", ...vacio, proxLlamada: "2026-11-25T16:00" }), null);
   assert.equal(faltaParaEstado({ estado: "RECHAZADO", ...vacio }), null);
 });
+
+test("una sola columna de estado: el del courier cuando salió, ENTREGADO al final", async () => {
+  const { estadoVisible, pedidoDespachado, bloqueadoPara } = await import("../src/lib/pedidos.ts");
+  const base = { tracking: null, estado_shalom: null, estado_swayp: null, guia_swayp: null };
+  assert.equal(estadoVisible({ ...base, estado: "CONFIRMADO" }).texto, "CONFIRMADO");
+  assert.equal(estadoVisible({ ...base, estado: "CONFIRMADO" }).courier, null);
+  const swayp = estadoVisible({ ...base, estado: "EN TRÁNSITO", guia_swayp: "SW1", estado_swayp: "Reparto" });
+  assert.deepEqual([swayp.texto, swayp.courier], ["Reparto", "SWAYP"]);
+  assert.match(estadoVisible({ ...base, estado: "EN TRÁNSITO", guia_swayp: "SW1", estado_swayp: "Novedad" }).color, /red/);
+  const shalom = estadoVisible({ ...base, estado: "EN OFICINA", tracking: "1 - A", estado_shalom: "EN DESTINO" });
+  assert.deepEqual([shalom.texto, shalom.courier], ["EN DESTINO", "SHALOM"]);
+  const fin = estadoVisible({ ...base, estado: "ENTREGADO", tracking: "1 - A", estado_shalom: "ENTREGADO" });
+  assert.deepEqual([fin.texto, fin.courier], ["ENTREGADO", "SHALOM"]);
+  assert.equal(estadoVisible({ ...base, estado: "RECHAZADO", guia_swayp: "SW1", estado_swayp: "Reparto" }).texto, "RECHAZADO");
+
+  assert.equal(pedidoDespachado({ tracking: " ", guia_swayp: null }), false);
+  assert.equal(pedidoDespachado({ tracking: "105149320 - 3WND" }), true);
+  assert.equal(bloqueadoPara("asesor", { guia_swayp: "SW1" }), true);
+  assert.equal(bloqueadoPara("encargado", { guia_swayp: "SW1" }), false);
+  assert.equal(bloqueadoPara("asesor", { tracking: "" }), false);
+});

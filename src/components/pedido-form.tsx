@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { History, Lock, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { BOTON_SECUNDARIO, EstadoChip } from "@/components/pedidos-ui";
@@ -28,7 +28,9 @@ import {
   type LineaDeProducto,
   type PedidoItem,
   urlDeSeguimientoSwayp,
+  bloqueadoPara,
   estadosIniciales,
+  pedidoDespachado,
   puedeCambiarEstado,
   type Pedido,
   type RolVenta,
@@ -174,12 +176,48 @@ export function PedidoForm({
   const quitarLinea = (indice: number) => setLineas((actuales) => actuales.filter((_, i) => i !== indice));
 
   const estadoOriginal = pedido?.estado ?? null;
+  // Ya salió (tiene guía o tracking): la asesora sólo ve, añade notas y pide cambios.
+  const bloqueado = !nuevo && bloqueadoPara(rolVenta, pedido);
+  const [cambioPedido, setCambioPedido] = useState("");
+  const [estadoPedido, setEstadoPedido] = useState("");
   const necesitaPermiso = !nuevo && estadoOriginal !== null && !puedeCambiarEstado(rolVenta, estadoOriginal, campos.estado);
   const opcionesDeEstado = nuevo ? estadosIniciales(rolVenta) : [...ESTADOS];
+
+  /** El pedido ya salió: se guarda la nota y, si la escribió, la solicitud de cambio. */
+  const guardarBloqueado = async () => {
+    if (!pedido) return;
+    setGuardando(true);
+    const nota = nulo(campos.nota);
+    if (nota !== (pedido.nota ?? null)) {
+      const { error: falla } = await supabase.from("pedidos").update({ nota }).eq("id", pedido.id);
+      if (falla) {
+        setGuardando(false);
+        return setError(traducir(falla.message));
+      }
+    }
+    const pedidoDeCambio = cambioPedido.trim();
+    if (pedidoDeCambio || estadoPedido) {
+      const { data: sesion } = await supabase.auth.getUser();
+      const { error: falla } = await supabase.from("autorizaciones").insert({
+        workspace_id: workspaceId,
+        pedido_id: pedido.id,
+        solicitante_id: sesion.user?.id,
+        estado_actual: pedido.estado,
+        estado_solicitado: estadoPedido || pedido.estado,
+        motivo: pedidoDeCambio || `Pasar a ${estadoPedido}`,
+      });
+      setGuardando(false);
+      if (falla) return setError(`No se pudo mandar la solicitud: ${falla.message}`);
+      return onSaved(`Pedido ${pedido.codigo}: tu pedido de cambio le llegó al administrador.`, { id: pedido.id, codigo: pedido.codigo });
+    }
+    setGuardando(false);
+    onSaved(`Pedido ${pedido.codigo} guardado.`, { id: pedido.id, codigo: pedido.codigo });
+  };
 
   const guardar = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (bloqueado) return guardarBloqueado();
 
     if (!campos.cliente.trim()) return setError("Falta el nombre del cliente.");
     const celular = campos.celular.replace(/\D/g, "");
@@ -341,6 +379,19 @@ export function PedidoForm({
           </div>
         )}
 
+        {bloqueado && (
+          <div className="rounded-xl border border-sky-300 bg-sky-50 p-4 text-sm dark:border-sky-400/30 dark:bg-sky-400/10">
+            <p className="flex items-center gap-2 font-semibold text-sky-900 dark:text-sky-200">
+              <Lock className="size-4" /> Este pedido ya salió (tiene guía o tracking)
+            </p>
+            <p className="mt-1 text-xs text-sky-800 dark:text-sky-300">
+              Su estado lo actualizan Swayp o Shalom. Puedes añadir notas abajo. Si hay que corregir algo, escríbelo en
+              &quot;Pedir un cambio&quot; y el administrador lo revisa.
+            </p>
+          </div>
+        )}
+
+        <fieldset disabled={bloqueado} className="space-y-5 disabled:opacity-80">
         <Seccion titulo="Pedido">
           <Campo etiqueta="Código">
             <input
@@ -562,12 +613,42 @@ export function PedidoForm({
               <input value={campos.encargado} onChange={(e) => cambiar("encargado", e.target.value)} className={INPUT_CLASS} />
             </Campo>
           )}
-          <Campo etiqueta="Nota" ancho>
-            <textarea value={campos.nota} onChange={(e) => cambiar("nota", e.target.value)} rows={2} className={INPUT_CLASS} />
-          </Campo>
+          {!bloqueado && (
+            <Campo etiqueta="Nota" ancho>
+              <textarea value={campos.nota} onChange={(e) => cambiar("nota", e.target.value)} rows={2} className={INPUT_CLASS} />
+            </Campo>
+          )}
         </Seccion>
+        </fieldset>
 
-        {necesitaPermiso && (
+        {bloqueado && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo etiqueta="Nota">
+              <textarea value={campos.nota} onChange={(e) => cambiar("nota", e.target.value)} rows={3} className={INPUT_CLASS} />
+            </Campo>
+            <div className="space-y-2">
+              <Campo etiqueta="Pedir un cambio al administrador">
+                <textarea
+                  value={cambioPedido}
+                  onChange={(e) => setCambioPedido(e.target.value)}
+                  rows={2}
+                  placeholder="Qué hay que cambiar y por qué. Ej.: el cliente cambió de dirección"
+                  className={INPUT_CLASS}
+                />
+              </Campo>
+              <select value={estadoPedido} onChange={(e) => setEstadoPedido(e.target.value)} className={INPUT_CLASS} aria-label="Estado que pides">
+                <option value="">Sin cambio de estado</option>
+                {ESTADOS.filter((estado) => estado !== pedido?.estado).map((estado) => (
+                  <option key={estado} value={estado}>
+                    Pasar a {estado}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {necesitaPermiso && !bloqueado && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">
             <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
               <ShieldAlert className="size-4" /> Pasar de {estadoOriginal} a {campos.estado} necesita autorización
@@ -599,7 +680,7 @@ export function PedidoForm({
           </details>
         )}
 
-        {!nuevo && pedido.guia_swayp && <SeguimientoSwayp pedido={pedido} timezone={timezone} />}
+        {!nuevo && pedidoDespachado(pedido) && <SeguimientoDeEnvio pedido={pedido} timezone={timezone} />}
 
         {!nuevo && (
           <div>
@@ -628,7 +709,7 @@ export function PedidoForm({
             Cancelar
           </button>
           <button type="submit" disabled={guardando} className={PRIMARY_BUTTON_CLASS}>
-            {guardando ? "Guardando…" : necesitaPermiso ? "Guardar y pedir autorización" : nuevo ? "Crear pedido" : "Guardar"}
+            {guardando ? "Guardando…" : bloqueado && (cambioPedido.trim() || estadoPedido) ? "Guardar y pedir el cambio" : necesitaPermiso ? "Guardar y pedir autorización" : nuevo ? "Crear pedido" : "Guardar"}
           </button>
         </div>
       </form>
@@ -676,10 +757,21 @@ function Lista({ valor, opciones, onCambio }: { valor: string; opciones: readonl
   );
 }
 
-type EventoDeEnvio = { id: string; estado: string | null; comentario: string | null; created_at: string };
+type EventoDeEnvio = {
+  id: string;
+  courier: string | null;
+  estado: string | null;
+  comentario: string | null;
+  costo: number | null;
+  recaudo: number | null;
+  created_at: string;
+};
 
-/** La guía de Swayp (sólo lectura), su link de seguimiento y los avisos que llegaron. */
-function SeguimientoSwayp({ pedido, timezone }: { pedido: Pedido; timezone: string }) {
+/**
+ * El envío del pedido: guía de Swayp o tracking de Shalom (sólo lectura), el
+ * estado del courier y todo lo que fue avisando, con sus notas, costo y cobro.
+ */
+function SeguimientoDeEnvio({ pedido, timezone }: { pedido: Pedido; timezone: string }) {
   const supabase = getSupabaseBrowser();
   const [eventos, setEventos] = useState<EventoDeEnvio[] | null>(null);
 
@@ -688,10 +780,10 @@ function SeguimientoSwayp({ pedido, timezone }: { pedido: Pedido; timezone: stri
     void (async () => {
       const { data } = await supabase
         .from("envio_eventos")
-        .select("id, estado, comentario, created_at")
+        .select("id, courier, estado, comentario, costo, recaudo, created_at")
         .eq("pedido_id", pedido.id)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
       if (vigente) setEventos((data ?? []) as EventoDeEnvio[]);
     })();
     return () => {
@@ -700,22 +792,29 @@ function SeguimientoSwayp({ pedido, timezone }: { pedido: Pedido; timezone: stri
   }, [supabase, pedido.id]);
 
   const guia = pedido.guia_swayp ?? "";
+  const estadoCourier = guia ? pedido.estado_swayp : pedido.estado_shalom;
   return (
     <div className="rounded-xl bg-white p-3 text-sm dark:bg-white/5">
       <p className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Guía Swayp</span>
-        <span className="font-mono">{guia}</span>
-        {pedido.estado_swayp && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-white/10">{pedido.estado_swayp}</span>}
-        <a href={urlDeSeguimientoSwayp(guia)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-amber-700 underline dark:text-amber-300">
-          Ver seguimiento
-        </a>
+        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{guia ? "Guía Swayp" : `Tracking ${pedido.courier ?? ""}`}</span>
+        <span className="font-mono">{guia || pedido.tracking}</span>
+        {estadoCourier && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-white/10">{estadoCourier}</span>}
+        {guia && (
+          <a href={urlDeSeguimientoSwayp(guia)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-amber-700 underline dark:text-amber-300">
+            Ver seguimiento
+          </a>
+        )}
       </p>
+      {eventos && eventos.length === 0 && <p className="mt-2 text-xs text-neutral-500">Todavía no llegó ningún movimiento del courier.</p>}
       {eventos && eventos.length > 0 && (
         <ol className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
           {eventos.map((e) => (
             <li key={e.id}>
+              {e.courier && <span className="mr-1 text-[10px] font-bold text-neutral-400">{e.courier}</span>}
               <b>{e.estado ?? "—"}</b> · {new Date(e.created_at).toLocaleString("es-PE", { timeZone: timezone })}
               {e.comentario ? ` · ${e.comentario}` : ""}
+              {e.costo !== null ? ` · envío S/ ${Number(e.costo).toFixed(2)}` : ""}
+              {e.recaudo !== null ? ` · cobró S/ ${Number(e.recaudo).toFixed(2)}` : ""}
             </li>
           ))}
         </ol>

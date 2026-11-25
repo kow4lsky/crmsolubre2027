@@ -497,3 +497,56 @@ export function productoDelCatalogo(titulo: string, catalogo: string[]): string 
   return candidatos.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
+
+/* ------------------------------------------------- estado único y bloqueo */
+
+export type EstadoVisible = {
+  /** Lo que se lee en la columna: el estado del courier tal cual, o el del CRM. */
+  texto: string;
+  /** De quién es ese estado: el courier o el CRM. */
+  courier: "SWAYP" | "SHALOM" | null;
+  /** Clases de color. */
+  color: string;
+};
+
+const ROJO = ESTADO_COLORES.RECHAZADO;
+const AMARILLO = ESTADO_COLORES["EN TRÁNSITO"];
+
+/** Estados de los couriers que piden atención: se pintan de rojo. */
+const PROBLEMA_COURIER = /novedad|revisi|cancel|indemniz|devoluc|devuelto|rechaz/i;
+
+/**
+ * Lo que muestra la columna ESTADO: una sola, con el estado que importa.
+ * - En gestión: el estado del CRM.
+ * - Ya despachado: el de Swayp (Lima) o el de Shalom (provincia), tal cual.
+ * - Al final: ENTREGADO, lo haya entregado quien lo haya entregado.
+ * El estado del CRM sigue por dentro para filtros, Analítica y entregados.
+ */
+export function estadoVisible(
+  p: Pick<Pedido, "estado" | "tracking" | "estado_shalom"> & { estado_swayp?: string | null; guia_swayp?: string | null },
+): EstadoVisible {
+  const swayp = (p.estado_swayp ?? "").trim();
+  const shalom = (p.estado_shalom ?? "").trim();
+  const courier: EstadoVisible["courier"] = swayp && p.guia_swayp ? "SWAYP" : shalom ? "SHALOM" : null;
+  const colorCrm = esEstado(p.estado) ? ESTADO_COLORES[p.estado] : ESTADO_COLORES.NC;
+
+  // Los estados finales del CRM mandan: lo decidió el courier o el administrador.
+  if (["ENTREGADO", "RECHAZADO", "DEPURADO"].includes(p.estado) || !courier) {
+    return { texto: p.estado, courier: p.estado === "ENTREGADO" ? courier : null, color: colorCrm };
+  }
+  const texto = courier === "SWAYP" ? swayp : shalom;
+  return { texto, courier, color: PROBLEMA_COURIER.test(texto) ? ROJO : /entregad/i.test(texto) ? ESTADO_COLORES.ENTREGADO : AMARILLO };
+}
+
+/**
+ * Un pedido que ya salió (tiene guía de Swayp o tracking): la asesora sólo
+ * puede verlo y añadir notas; para cambiar algo pide autorización. Igual que
+ * `pedido_despachado()` en la base.
+ */
+export function pedidoDespachado(p: { tracking?: string | null; guia_swayp?: string | null } | null | undefined): boolean {
+  return Boolean((p?.tracking ?? "").trim() || (p?.guia_swayp ?? "").trim());
+}
+
+export function bloqueadoPara(rol: RolVenta, p: Parameters<typeof pedidoDespachado>[0]): boolean {
+  return (rol === "asesor" || rol === "asesor_temp") && pedidoDespachado(p);
+}

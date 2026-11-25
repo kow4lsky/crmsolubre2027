@@ -24,7 +24,7 @@ import { EnvioShalom } from "@/components/envio-shalom";
 import { ImportarShopify } from "@/components/importar-shopify";
 import { PedidoAjeno } from "@/components/pedido-ajeno";
 import { PedidoForm } from "@/components/pedido-form";
-import { BOTON_SECUNDARIO, EstadoChip, descargar } from "@/components/pedidos-ui";
+import { BOTON_SECUNDARIO, EstadoChip, EstadoUnico, descargar } from "@/components/pedidos-ui";
 import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import {
   COLUMNAS_PEDIDO,
@@ -458,7 +458,7 @@ export function PedidosPanel({
                   className="size-4 accent-amber-500"
                 />
               </th>
-              {["Cod", "F. reg", "Monto", "Pedido", "Cliente", "Celular", "DNI", "Tracking", "Estado courier", "Estado CRM", "Provincia", "Destino", "Courier", "Asesor"].map((t) => (
+              {["Cod", "F. reg", "Monto", "Pedido", "Cliente", "Celular", "DNI", "Tracking", "Estado", "Provincia", "Destino", "Courier", "Asesor"].map((t) => (
                 <th key={t} className="whitespace-nowrap px-2 py-2.5 font-semibold">
                   {t}
                 </th>
@@ -506,9 +506,8 @@ export function PedidosPanel({
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.celular || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.dni || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2 font-mono">{p.tracking || "—"}</td>
-                <td className="whitespace-nowrap px-2 py-2">{p.estado_swayp || p.estado_shalom || "—"}</td>
                 <td className="px-2 py-2">
-                  <EstadoChip estado={p.estado} />
+                  <EstadoUnico pedido={p} />
                 </td>
                 <td className="whitespace-nowrap px-2 py-2">{p.provincia || "—"}</td>
                 <td className="whitespace-nowrap px-2 py-2">{p.destino || "—"}</td>

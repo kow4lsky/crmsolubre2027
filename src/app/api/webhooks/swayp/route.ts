@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { credenciales, estaConfigurada } from "@/lib/integraciones-server";
+import { anotarConexion } from "@/lib/registro-conexiones";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { estadoDelCrm, leerAvisoSwayp, verificarFirmaSwayp, type AvisoSwayp } from "@/lib/swayp";
 import { buscarCampo, consultarGuiaSwayp } from "@/lib/swayp-server";
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
   const cuerpo = await request.text();
   if (!verificarFirmaSwayp(cuerpo, request.headers.get("x-swayp-signature"), conexion.valores.webhook_secret)) {
     console.warn("[swayp] firma inválida");
+    await anotarConexion(getSupabaseAdmin(), "SWAYP", "Llegó un aviso con firma inválida: revisa que el secreto de Conexiones sea el de Swayp.", { nivel: "aviso" });
     return NextResponse.json({ error: "Firma inválida: revisa el secreto en Configuración → Conexiones." }, { status: 401 });
   }
 
@@ -104,10 +106,17 @@ export async function POST(request: NextRequest) {
   if (errorEvento?.code === "23505") return NextResponse.json({ ok: true, repetido: true });
   if (errorEvento) {
     console.error("[swayp] no se pudo guardar el aviso:", errorEvento.message);
+    await anotarConexion(admin, "SWAYP", `No se pudo guardar el aviso de la guía ${aviso.guia}: ${errorEvento.message}`, { workspaceId: workspace.id });
     return NextResponse.json({ error: errorEvento.message }, { status: 500 });
   }
 
-  if (!pedido) return NextResponse.json({ ok: true, sinPedido: aviso.guia });
+  if (!pedido) {
+    await anotarConexion(admin, "SWAYP", `La guía ${aviso.guia} (${aviso.estado}) no se encontró en ningún pedido. Quedó guardada.`, {
+      nivel: "aviso",
+      workspaceId: workspace.id,
+    });
+    return NextResponse.json({ ok: true, sinPedido: aviso.guia });
+  }
 
   const cambios: Record<string, unknown> = { estado_swayp: aviso.estado };
   if (!pedido.guia_swayp) cambios.guia_swayp = aviso.guia;
@@ -120,6 +129,7 @@ export async function POST(request: NextRequest) {
   const { error } = await admin.from("pedidos").update(cambios).eq("id", pedido.id);
   if (error) {
     console.error("[swayp] no se pudo actualizar el pedido:", error.message);
+    await anotarConexion(admin, "SWAYP", `No se pudo actualizar el pedido ${pedido.codigo}: ${error.message}`, { workspaceId: workspace.id });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ ok: true, codigo: pedido.codigo, estado: nuevo ?? pedido.estado });

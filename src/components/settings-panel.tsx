@@ -17,6 +17,7 @@ import {
 } from "@/app/actions";
 import { useAccess } from "@/components/access";
 import { IntegracionesCard } from "@/components/integraciones-panel";
+import { RegistroConexionesCard } from "@/components/registro-conexiones";
 import { Card } from "@/components/ui";
 import { TIMEZONE_OPTIONS, longDateInZone } from "@/lib/fechas";
 
@@ -96,6 +97,8 @@ export function SettingsPanel({ timezone }: { timezone: string }) {
       </Card>
 
       <IntegracionesCard />
+
+      <RegistroConexionesCard timezone={timezone} />
 
       <TimezoneCard timezone={timezone} />
 

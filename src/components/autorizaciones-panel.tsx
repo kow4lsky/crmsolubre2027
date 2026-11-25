@@ -126,8 +126,14 @@ export function AutorizacionesPanel({
                 <span className="font-semibold">{pedido?.cliente ?? ""}</span>
                 <span className="text-neutral-400">·</span>
                 <EstadoChip estado={s.estado_actual} />
-                <span>→</span>
-                <EstadoChip estado={s.estado_solicitado} />
+                {s.estado_solicitado === s.estado_actual ? (
+                  <span className="text-xs font-semibold text-sky-700 dark:text-sky-300">Pide un cambio de datos (edítalo tú)</span>
+                ) : (
+                  <>
+                    <span>→</span>
+                    <EstadoChip estado={s.estado_solicitado} />
+                  </>
+                )}
               </div>
               <p className="mt-2 text-sm">
                 <span className="text-neutral-500">{s.solicitante ?? "Alguien"} pidió:</span> {s.motivo}
