@@ -4265,9 +4265,15 @@ export async function registrarPedidosEnShalom(
   if (!scope.ok) return { ok: false, error: scope.error };
   if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden registrar en Shalom." };
   if (!archivoBase64 || pedidoIds.length === 0) return { ok: false, error: "No hay envíos para registrar." };
-  const { registrarEnShalom } = await import("@/lib/shalom-server");
-  const archivo = Uint8Array.from(Buffer.from(archivoBase64, "base64"));
-  return registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500));
+  try {
+    const { registrarEnShalom } = await import("@/lib/shalom-server");
+    const archivo = Uint8Array.from(Buffer.from(archivoBase64, "base64"));
+    return await registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500));
+  } catch (error) {
+    // Sin esto el navegador sólo ve "Minified React error": se devuelve el motivo.
+    console.error("[shalom] registrar:", error);
+    return { ok: false, error: `No se pudo registrar en Shalom: ${error instanceof Error ? error.message : String(error)}` };
+  }
 }
 
 /** "Registrar en Swayp": crea las guías de los pedidos de Lima con la API de Swayp. */
@@ -4291,8 +4297,13 @@ export async function registrarPedidosEnSwayp(
     permitidas = permitidas.filter((f) => visibles.has(f.pedidoId));
     if (!permitidas.length) return { ok: false, error: "Solo puedes registrar en Swayp tus propios pedidos." };
   }
-  const { registrarEnSwayp } = await import("@/lib/swayp-server");
-  return registrarEnSwayp(getSupabaseAdmin(), scope.workspaceId, permitidas);
+  try {
+    const { registrarEnSwayp } = await import("@/lib/swayp-server");
+    return await registrarEnSwayp(getSupabaseAdmin(), scope.workspaceId, permitidas);
+  } catch (error) {
+    console.error("[swayp] registrar:", error);
+    return { ok: false, error: `No se pudo registrar en Swayp: ${error instanceof Error ? error.message : String(error)}` };
+  }
 }
 
 /** "Actualizar estados de Shalom" sin esperar las 12 horas. */
@@ -4300,6 +4311,15 @@ export async function actualizarShalomAhora(): Promise<{ ok: true; mensaje: stri
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
   if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden hacerlo." };
+  try {
+    return await actualizarShalom();
+  } catch (error) {
+    console.error("[shalom] actualizar:", error);
+    return { ok: false, error: `No se pudo actualizar Shalom: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+async function actualizarShalom(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
   const { actualizarEstadosShalom, mantenerSesionShalom } = await import("@/lib/shalom-server");
   // Primero se confirma que la sesión de Shalom PRO está abierta.
   const sesion = await mantenerSesionShalom(getSupabaseAdmin(), true);

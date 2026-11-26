@@ -77,7 +77,7 @@ export function EnvioOlva({ pedidos, onClose, onNotice }: { pedidos: Pedido[]; o
       const hoja = await zip.file(ruta)?.async("string");
       if (!hoja) throw new Error("La plantilla de Olva no tiene la hoja de envíos.");
       zip.file(ruta, llenarHojaOlva(hoja, filas));
-      const archivo = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.ms-excel.sheet.macroEnabled.12" });
+      const archivo = await zip.generateAsync({ type: "blob", compression: "DEFLATE", mimeType: "application/vnd.ms-excel.sheet.macroEnabled.12" });
       const url = URL.createObjectURL(archivo);
       const enlace = document.createElement("a");
       enlace.href = url;

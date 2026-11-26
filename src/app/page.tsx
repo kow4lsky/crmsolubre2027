@@ -4,6 +4,10 @@ import { getWorkspaceContext } from "@/lib/workspace";
 
 // La sesión vive en cookies: el dashboard siempre se renderiza por request.
 export const dynamic = "force-dynamic";
+// Las Server Actions de esta página (registrar en Shalom o Swayp, traer
+// estados) hablan con otros sistemas y pueden tardar más que el tope por
+// defecto de la plataforma.
+export const maxDuration = 60;
 
 export default async function Home({
   searchParams,

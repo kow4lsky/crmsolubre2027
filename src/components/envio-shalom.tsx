@@ -110,7 +110,7 @@ export function EnvioShalom({
     setGenerando(true);
     try {
       const zip = await armarArchivo();
-      const archivo = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const archivo = await zip.generateAsync({ type: "blob", compression: "DEFLATE", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(archivo);
       const enlace = document.createElement("a");
       enlace.href = url;
@@ -133,7 +133,7 @@ export function EnvioShalom({
     setErrorRegistro(null);
     try {
       const zip = await armarArchivo();
-      const base64 = await zip.generateAsync({ type: "base64" });
+      const base64 = await zip.generateAsync({ type: "base64", compression: "DEFLATE" });
       const r = await registrarPedidosEnShalom(
         base64,
         filas.map((f) => f.pedido.id),
