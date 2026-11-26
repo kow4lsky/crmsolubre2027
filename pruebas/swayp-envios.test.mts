@@ -40,6 +40,7 @@ const pedido = {
   pedido: "3xSOLUBRE, 1xCEPILLO VERDE",
   nota: "PAGA CON TARJETA",
   envio: "Express",
+  fecha_registro: "2026-11-24",
 };
 
 test("arma el Excel de carga masiva como el que se subía a mano", async () => {
@@ -48,7 +49,7 @@ test("arma el Excel de carga masiva como el que se subía a mano", async () => {
   const filas = filasExcelSwayp([fila]);
   assert.deepEqual(filas[1], [
     "WED236100", "Carmen Almeyda", "997556514", "SOLUBRE", "", "LIMA", "San Borja", "Calle 7 nro 211 dpto 301", "", "89.90", "", "",
-    "3xSOLUBRE, 1xCEPILLO VERDE", "", "", "", "", "2026-11-25", "PAGA CON TARJETA", "1", "EXPRESS",
+    "3xSOLUBRE, 1xCEPILLO VERDE", "", "", "", "", "2026-11-24", "PAGA CON TARJETA", "1", "EXPRESS",
   ]);
   // Ida y vuelta por un .xlsx de verdad.
   const leidas = await leerXlsx(await crearXlsx(filas));
@@ -79,6 +80,9 @@ test("el cuerpo de la guía para la API de Swayp", () => {
   assert.equal(cuerpo.largo, "25");
   assert.equal(cuerpo.peso, "1.5");
   assert.match(String(cuerpo.observaciones), /^Pedido WED236100/);
+  assert.equal(cuerpo.id, "WED236100");
+  assert.equal(cuerpo.fechaEntrega, "2026-11-24T09:00:00-05:00");
+  assert.equal(cuerpo.servicio, "NORMAL");
   assert.deepEqual(cuerpo.productos, [{ cantidad: 3, codbar: "SOLUBRE", nombre: "SOLUBRE" }]);
   assert.equal(productosParaSwayp([{ producto: "BROCHAS", cantidad: 1 }], new Map()), null);
   // Sin datos de remitente, como en el Excel: no se mandan vacíos.
