@@ -183,13 +183,26 @@ export function dnisNoRegistrados(mensaje: string): string[] {
  * primero pide a Shalom los nombres del DNI y, si no los tiene, usa los del CRM.
  */
 export async function registrarDestinatario(cliente: ClienteShalomPro, d: Destinatario, correo: string): Promise<{ ok: boolean; mensaje: string }> {
-  let nombres = d.nombres;
-  let paterno = d.paterno;
-  let materno = d.materno;
+  // Sin tildes (la Ñ se queda): así los tiene Shalom.
+  const limpio = (texto: string) =>
+    texto
+      .toUpperCase()
+      .replace(/Ñ/g, "\u0000")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\u0000/g, "Ñ")
+      .replace(/[^A-ZÑ ]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  let nombres = limpio(d.nombres);
+  let paterno = limpio(d.paterno);
+  let materno = limpio(d.materno);
+  let enShalom = false;
   try {
     const encontrado = (await cliente.pedir("POST", "/person/search", { type_document: "DNI", document: d.dni })) as Record<string, unknown> | null;
     const datos = (encontrado && typeof encontrado === "object" && "data" in encontrado ? encontrado.data : encontrado) as Record<string, unknown> | null;
     if (datos?.name) {
+      enShalom = true;
       nombres = String(datos.name);
       paterno = String(datos.surname ?? paterno);
       materno = String(datos.lastname ?? materno);
@@ -215,10 +228,17 @@ export async function registrarDestinatario(cliente: ClienteShalomPro, d: Destin
       ubigeo: "",
       register: false,
     })) as Record<string, unknown> | null;
-    if (respuesta && respuesta.valor === false) return { ok: false, mensaje: `${d.dni}: ${String(respuesta.msn ?? "Shalom no lo registró")}` };
+    if (respuesta && respuesta.valor === false) {
+      return { ok: false, mensaje: `documento: ${d.dni} (${String(respuesta.msn ?? "Shalom no lo registró")})` };
+    }
     return { ok: true, mensaje: `${d.dni}: ${paterno} ${materno}, ${nombres}`.replace(/\s+,/, ",") };
   } catch (error) {
-    return { ok: false, mensaje: `${d.dni}: ${error instanceof Error ? error.message : String(error)}` };
+    // "documento: N" para que la ventana marque la fila y ofrezca quitarla.
+    const motivo = error instanceof Error ? error.message.replace(/^Shalom PRO:\s*/, "") : String(error);
+    return {
+      ok: false,
+      mensaje: `documento: ${d.dni} (${motivo}${enShalom ? "" : "; Shalom no encontró ese DNI: revisa que esté bien escrito"})`,
+    };
   }
 }
 
@@ -266,14 +286,17 @@ export async function registrarMasivo(
     for (const dni of faltan) {
       const datos = destinatarios.get(dni);
       if (!datos) {
-        problemas.push(`${dni}: no está en esta tanda.`);
+        problemas.push(`documento: ${dni} (no está en esta tanda)`);
         continue;
       }
       const r = await registrarDestinatario(cliente, datos, correo);
       (r.ok ? clientesNuevos : problemas).push(r.mensaje);
     }
     if (problemas.length) {
-      throw new Error(`Shalom no tiene registrados algunos destinatarios y no se pudieron registrar: ${problemas.join(" · ")}`);
+      throw new Error(
+        `Shalom no tiene registrados algunos destinatarios y no se pudieron registrar:\n${problemas.join("\n")}` +
+          (clientesNuevos.length ? `\nSí se registraron: ${clientesNuevos.join(" · ")}. Quita los marcados en rojo y vuelve a intentar.` : ""),
+      );
     }
     await subir();
   }
