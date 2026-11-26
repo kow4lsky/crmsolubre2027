@@ -212,7 +212,7 @@ export function EnvioShalom({
                       </span>
                       {rechazado && (
                         <span className="mt-1 block font-semibold text-red-700 dark:text-red-300">
-                          Shalom no reconoce este DNI: corrígelo o quita este pedido.
+                          Shalom no reconoce este DNI: revísalo, o quita este pedido y regístralo como envío individual en Shalom PRO.
                         </span>
                       )}
                       <span className="block">{f.pedido.cliente}</span>

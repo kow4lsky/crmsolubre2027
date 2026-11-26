@@ -210,50 +210,54 @@ export async function registrarDestinatario(cliente: ClienteShalomPro, d: Destin
   } catch {
     // Shalom no tiene el DNI: se usan los nombres del CRM.
   }
+  // La carga masiva sólo acepta DNI que Shalom encuentra (RENIEC). Si no lo
+  // encuentra, registrarlo a mano no sirve: hay que revisar el DNI o hacer
+  // ese envío como individual en Shalom PRO.
+  if (!enShalom) {
+    return {
+      ok: false,
+      mensaje: `documento: ${d.dni} (Shalom no encuentra este DNI en RENIEC y la carga masiva no lo acepta: revisa que esté bien escrito, o quita este pedido y regístralo como envío individual en Shalom PRO)`,
+    };
+  }
   if (!nombres || !paterno) return { ok: false, mensaje: `documento: ${d.dni} (falta el nombre para registrarlo en Shalom)` };
   const celular = d.celular.replace(/\D/g, "");
   if (celular.length !== 9) return { ok: false, mensaje: `documento: ${d.dni} (Shalom pide un celular de 9 dígitos)` };
   const nombreCompleto = `${d.dni}: ${paterno} ${materno}, ${nombres}`.replace(/\s+,/, ",");
 
-  // Como el envío individual de Shalom PRO ("¿Quién recibirá el envío?"):
-  // cuando no reconoce el DNI, se llenan nombre, apellidos y celular a mano.
+  // Con un DNI que Shalom encuentra, el formulario de Clientes es el que hace
+  // que la carga masiva lo acepte; el del envío individual queda de respaldo.
   try {
-    await cliente.pedir("POST", "/service-orders/recipients/save", {
+    const respuesta = (await cliente.pedir("POST", "/person", {
+      name: nombres,
+      // En Clientes, sur_name es el apellido paterno y last_name el materno.
+      sur_name: paterno,
+      last_name: materno || paterno,
       document: d.dni,
-      first_name: nombres,
-      last_name: paterno,
-      surname: materno || paterno,
-      email: "",
       phone: celular,
-    });
+      email: correo,
+      birthday: "",
+      address: "",
+      home_reference: "",
+      empresa_id: { id: "", legal_name: "" },
+      ubigeo: "",
+      register: false,
+    })) as Record<string, unknown> | null;
+    if (respuesta && respuesta.valor === false) throw new Error(String(respuesta.msn ?? "Shalom no lo registró"));
     return { ok: true, mensaje: nombreCompleto };
   } catch (primero) {
-    // Respaldo: el formulario de Clientes.
     try {
-      const respuesta = (await cliente.pedir("POST", "/person", {
-        name: nombres,
-        // En Clientes, sur_name es el apellido paterno y last_name el materno.
-        sur_name: paterno,
-        last_name: materno || paterno,
+      await cliente.pedir("POST", "/service-orders/recipients/save", {
         document: d.dni,
+        first_name: nombres,
+        last_name: paterno,
+        surname: materno || paterno,
+        email: "",
         phone: celular,
-        email: correo,
-        birthday: "",
-        address: "",
-        home_reference: "",
-        empresa_id: { id: "", legal_name: "" },
-        ubigeo: "",
-        register: false,
-      })) as Record<string, unknown> | null;
-      if (respuesta && respuesta.valor === false) throw new Error(String(respuesta.msn ?? "Shalom no lo registró"));
+      });
       return { ok: true, mensaje: nombreCompleto };
     } catch {
-      // "documento: N" para que la ventana marque la fila y ofrezca quitarla.
       const motivo = primero instanceof Error ? primero.message.replace(/^Shalom PRO:\s*/, "") : String(primero);
-      return {
-        ok: false,
-        mensaje: `documento: ${d.dni} (${motivo}${enShalom ? "" : "; Shalom no encontró ese DNI: revisa que esté bien escrito"})`,
-      };
+      return { ok: false, mensaje: `documento: ${d.dni} (${motivo})` };
     }
   }
 }
