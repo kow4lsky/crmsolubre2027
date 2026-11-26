@@ -120,21 +120,35 @@ export class ClienteShalomPro {
 }
 
 /** Una lista de lo que devuelva Shalom: un arreglo, o un paginado { data: [...] }. */
-export function lista(valor: unknown): Record<string, unknown>[] {
+export function lista(valor: unknown, profundidad = 0): Record<string, unknown>[] {
   if (Array.isArray(valor)) return valor as Record<string, unknown>[];
   if (valor && typeof valor === "object") {
-    for (const clave of ["data", "items", "shipments", "rows"]) {
+    for (const clave of ["items", "data", "shipments", "rows"]) {
       const adentro = (valor as Record<string, unknown>)[clave];
       if (Array.isArray(adentro)) return adentro as Record<string, unknown>[];
     }
+    // A veces viene envuelto otra vez: { data: { items: [...] } }.
+    const data = (valor as Record<string, unknown>).data;
+    if (data && typeof data === "object" && profundidad < 3) return lista(data, profundidad + 1);
   }
   return [];
+}
+
+/** La forma de una respuesta (sólo los nombres de los campos), para diagnosticar. */
+export function formaDe(valor: unknown, profundidad = 0): string {
+  if (Array.isArray(valor)) return `[${valor.length}]`;
+  if (!valor || typeof valor !== "object" || profundidad > 2) return typeof valor;
+  return `{${Object.entries(valor as Record<string, unknown>)
+    .slice(0, 8)
+    .map(([k, v]) => (v && typeof v === "object" ? `${k}:${formaDe(v, profundidad + 1)}` : k))
+    .join(",")}}`;
 }
 
 /** Si un paginado de Laravel tiene más páginas. */
 export function hayOtraPagina(valor: unknown): boolean {
   if (!valor || typeof valor !== "object") return false;
-  const v = valor as Record<string, unknown>;
+  let v = valor as Record<string, unknown>;
+  if (!v.meta && !v.last_page && v.data && typeof v.data === "object" && !Array.isArray(v.data)) v = v.data as Record<string, unknown>;
   const meta = (v.meta as Record<string, unknown> | undefined) ?? v;
   const actual = Number(meta.current_page ?? 0);
   const ultima = Number(meta.last_page ?? 0);
@@ -193,16 +207,19 @@ export async function historial(cliente: ClienteShalomPro, desde: string, hasta:
  * Los envíos con su estado (en origen, en tránsito, en destino…), como la
  * pantalla "Rastreo" de Shalom PRO. El historial no trae el estado: sólo esta.
  */
-export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 40) {
+export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 60, filtros: Record<string, string> = {}) {
   const todos: Record<string, unknown>[] = [];
+  let forma = "";
   for (let pagina = 1; pagina <= paginasMaximas; pagina++) {
-    const params = new URLSearchParams({ page: String(pagina), per_page: "100", order_by: "desc" });
+    // Los mismos parámetros que manda la pantalla Rastreo de Shalom PRO.
+    const params = new URLSearchParams({ page: String(pagina), document_type: "DNI", order_by: "desc", per_page: "20", ...filtros });
     const respuesta = await cliente.pedir("GET", `/service-orders/shipments/tracking?${params}`);
+    if (pagina === 1) forma = formaDe(respuesta);
     const items = lista(respuesta);
     todos.push(...items);
     if (!items.length || !hayOtraPagina(respuesta)) break;
   }
-  return todos;
+  return Object.assign(todos, { forma });
 }
 
 /** Los envíos registrados que esperan que se lleven a la agencia. */
