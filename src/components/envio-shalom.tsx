@@ -143,6 +143,8 @@ export function EnvioShalom({
       const r = await registrarPedidosEnShalom(
         base64,
         filas.map((f) => f.pedido.id),
+        // Por si Shalom no tiene a algún destinatario: el CRM lo registra.
+        filas.map((f) => ({ dni: f.documento, celular: f.telefono, cliente: f.pedido.cliente })),
       );
       if (!r.ok) setErrorRegistro(textoDeShalom(r.error));
       else {
@@ -292,6 +294,11 @@ export function EnvioShalom({
                   </li>
                 ))}
               </ul>
+            )}
+            {(resultado.clientesNuevos?.length ?? 0) > 0 && (
+              <p className="text-xs">
+                👤 Shalom no tenía a {resultado.clientesNuevos?.length} destinatario(s) y el CRM los registró: {resultado.clientesNuevos?.join(" · ")}
+              </p>
             )}
             {resultado.conError.length > 0 && (
               <p className="text-xs text-red-800 dark:text-red-200">

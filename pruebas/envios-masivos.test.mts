@@ -5,7 +5,7 @@ import test from "node:test";
 import JSZip from "jszip";
 
 import { AGENCIAS_SHALOM } from "../src/lib/agencias-shalom.ts";
-import { cajaShalom, documentosRechazadosShalom, llenarHojaShalom, textoDeShalom, problemasDeFilaShalom, productosPrincipales, sugerirAgencia } from "../src/lib/envios-masivos.ts";
+import { cajaShalom, documentosRechazadosShalom, nombreEnTresPartes, llenarHojaShalom, textoDeShalom, problemasDeFilaShalom, productosPrincipales, sugerirAgencia } from "../src/lib/envios-masivos.ts";
 
 test("la caja se decide por los productos principales, sin accesorios", () => {
   assert.equal(productosPrincipales("3xsolubre, 1xcv"), 3);
@@ -122,4 +122,10 @@ test("lee los DNI que Shalom rechazó", () => {
   assert.deepEqual(documentosRechazadosShalom(mensaje), ["16668407", "45083470"]);
   assert.equal(textoDeShalom(mensaje).split("\n").length, 3);
   assert.doesNotMatch(textoDeShalom(mensaje), /<br>/);
+});
+
+test("separa nombres y apellidos paterno y materno", () => {
+  assert.deepEqual(nombreEnTresPartes("Guillermina Aguinaga Paz"), { nombres: "Guillermina", paterno: "Aguinaga", materno: "Paz" });
+  assert.deepEqual(nombreEnTresPartes("David Misael Pariona Untiveros"), { nombres: "David Misael", paterno: "Pariona", materno: "Untiveros" });
+  assert.deepEqual(nombreEnTresPartes("Juan Tello"), { nombres: "Juan", paterno: "Tello", materno: "" });
 });

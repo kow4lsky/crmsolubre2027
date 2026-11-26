@@ -212,6 +212,18 @@ export function partirNombre(cliente: string): { nombres: string; apellido: stri
   return { nombres: partes.slice(0, partes.length - 2).join(" "), apellido: partes[partes.length - 2] };
 }
 
+/**
+ * "Guillermina Aguinaga Paz" → nombres, apellido paterno y materno (Perú: los
+ * dos últimos son los apellidos). Con dos palabras no hay materno.
+ */
+export function nombreEnTresPartes(cliente: string): { nombres: string; paterno: string; materno: string } {
+  const partes = cliente.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return { nombres: "", paterno: "", materno: "" };
+  if (partes.length === 1) return { nombres: partes[0], paterno: partes[0], materno: "" };
+  if (partes.length === 2) return { nombres: partes[0], paterno: partes[1], materno: "" };
+  return { nombres: partes.slice(0, -2).join(" "), paterno: partes[partes.length - 2], materno: partes[partes.length - 1] };
+}
+
 export const etiquetaDeTienda = (t: TiendaOlva) => `${t.provincia} / ${t.distrito} · ${t.tienda.split(" | ")[0]}`;
 
 export type SugerenciaOlva = { tienda: TiendaOlva | null; segura: boolean; candidatas: TiendaOlva[] };

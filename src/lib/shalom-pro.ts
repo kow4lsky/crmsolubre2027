@@ -170,40 +170,130 @@ export function hayOtraPagina(valor: unknown): boolean {
   return actual > 0 && ultima > actual;
 }
 
+/** Lo que hace falta para registrar en Shalom a un destinatario que no tiene. */
+export type Destinatario = { dni: string; celular: string; nombres: string; paterno: string; materno: string };
+
+/** Los DNI que Shalom no tiene registrados, de su mensaje de validación. */
+export function dnisNoRegistrados(mensaje: string): string[] {
+  return [...new Set([...mensaje.matchAll(/documento:?\s*(\d{6,12})[^<\n]*no est[aá] registrad/gi)].map((m) => m[1]))];
+}
+
+/**
+ * Registra un destinatario en "Clientes" de Shalom PRO, como su formulario:
+ * primero pide a Shalom los nombres del DNI y, si no los tiene, usa los del CRM.
+ */
+export async function registrarDestinatario(cliente: ClienteShalomPro, d: Destinatario, correo: string): Promise<{ ok: boolean; mensaje: string }> {
+  let nombres = d.nombres;
+  let paterno = d.paterno;
+  let materno = d.materno;
+  try {
+    const encontrado = (await cliente.pedir("POST", "/person/search", { type_document: "DNI", document: d.dni })) as Record<string, unknown> | null;
+    const datos = (encontrado && typeof encontrado === "object" && "data" in encontrado ? encontrado.data : encontrado) as Record<string, unknown> | null;
+    if (datos?.name) {
+      nombres = String(datos.name);
+      paterno = String(datos.surname ?? paterno);
+      materno = String(datos.lastname ?? materno);
+    }
+  } catch {
+    // Shalom no tiene el DNI: se usan los nombres del CRM.
+  }
+  if (!nombres || !paterno) return { ok: false, mensaje: `${d.dni}: falta el nombre para registrarlo en Shalom.` };
+  if (d.celular.replace(/\D/g, "").length !== 9) return { ok: false, mensaje: `${d.dni}: Shalom pide un celular de 9 dígitos.` };
+  try {
+    const respuesta = (await cliente.pedir("POST", "/person", {
+      name: nombres,
+      // En Shalom, sur_name es el apellido paterno y last_name el materno.
+      sur_name: paterno,
+      last_name: materno || paterno,
+      document: d.dni,
+      phone: d.celular.replace(/\D/g, ""),
+      email: correo,
+      birthday: "",
+      address: "",
+      home_reference: "",
+      empresa_id: { id: "", legal_name: "" },
+      ubigeo: "",
+      register: false,
+    })) as Record<string, unknown> | null;
+    if (respuesta && respuesta.valor === false) return { ok: false, mensaje: `${d.dni}: ${String(respuesta.msn ?? "Shalom no lo registró")}` };
+    return { ok: true, mensaje: `${d.dni}: ${paterno} ${materno}, ${nombres}`.replace(/\s+,/, ",") };
+  } catch (error) {
+    return { ok: false, mensaje: `${d.dni}: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
 export type ResultadoDelRegistro = {
   /** Los borradores que Shalom aceptó y se enviaron. */
   enviados: Record<string, unknown>[];
   /** Los que Shalom marcó con error y quedaron sin enviar en Shalom PRO. */
   conError: Record<string, unknown>[];
   mensaje: string;
+  /** Destinatarios que el CRM registró en Shalom porque no los tenía. */
+  clientesNuevos?: string[];
 };
 
 /**
  * El registro masivo, como en la web: sube el Excel, toma sólo los borradores
  * nuevos, les pone la clave de seguridad y los envía.
  */
-export async function registrarMasivo(cliente: ClienteShalomPro, archivo: Uint8Array, clave: string): Promise<ResultadoDelRegistro> {
+export async function registrarMasivo(
+  cliente: ClienteShalomPro,
+  archivo: Uint8Array,
+  clave: string,
+  destinatarios: Map<string, Destinatario> = new Map(),
+  correo = "",
+): Promise<ResultadoDelRegistro> {
   const antes = new Set(lista(await pedirLista(cliente, "/service-orders")).map((b) => String(b.id)));
 
-  const formulario = new FormData();
-  formulario.append(
-    "file",
-    new Blob([archivo as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-    "envios.xlsx",
-  );
-  await cliente.pedir("POST", "/service-orders/import", formulario);
+  const subir = () => {
+    const formulario = new FormData();
+    formulario.append(
+      "file",
+      new Blob([archivo as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+      "envios.xlsx",
+    );
+    return cliente.pedir("POST", "/service-orders/import", formulario);
+  };
+  const clientesNuevos: string[] = [];
+  try {
+    await subir();
+  } catch (error) {
+    // Shalom rechaza toda la tanda si algún destinatario no está en su base:
+    // se registran esos clientes y se vuelve a subir una vez.
+    const faltan = error instanceof Error ? dnisNoRegistrados(error.message) : [];
+    if (!faltan.length || !correo) throw error;
+    const problemas: string[] = [];
+    for (const dni of faltan) {
+      const datos = destinatarios.get(dni);
+      if (!datos) {
+        problemas.push(`${dni}: no está en esta tanda.`);
+        continue;
+      }
+      const r = await registrarDestinatario(cliente, datos, correo);
+      (r.ok ? clientesNuevos : problemas).push(r.mensaje);
+    }
+    if (problemas.length) {
+      throw new Error(`Shalom no tiene registrados algunos destinatarios y no se pudieron registrar: ${problemas.join(" · ")}`);
+    }
+    await subir();
+  }
 
   const nuevos = lista(await pedirLista(cliente, "/service-orders")).filter((b) => !antes.has(String(b.id)));
   const conError = nuevos.filter((b) => b.error);
   const listos = nuevos.filter((b) => !b.error);
   if (listos.length === 0) {
-    return { enviados: [], conError, mensaje: nuevos.length ? "Shalom rechazó todos los envíos del archivo." : "Shalom no creó ningún envío con el archivo." };
+    return {
+      enviados: [],
+      conError,
+      clientesNuevos,
+      mensaje: nuevos.length ? "Shalom rechazó todos los envíos del archivo." : "Shalom no creó ningún envío con el archivo.",
+    };
   }
   const ids = listos.map((b) => b.id);
   if (clave.trim()) await cliente.pedir("POST", "/service-orders/security-code/massive", { code: clave.trim(), ids });
   const envio = await cliente.pedir("POST", "/service-orders/send", { shipments: ids });
   const mensaje = envio && typeof envio === "object" && "message" in envio ? String((envio as { message: unknown }).message) : "Envíos registrados.";
-  return { enviados: listos, conError, mensaje };
+  return { enviados: listos, conError, mensaje, clientesNuevos };
 }
 
 /** Los envíos registrados entre dos días ("2026-11-24"), de todas las páginas. */

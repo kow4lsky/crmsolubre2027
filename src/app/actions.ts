@@ -4260,6 +4260,7 @@ export async function prepararAvisosPush(): Promise<
 export async function registrarPedidosEnShalom(
   archivoBase64: string,
   pedidoIds: string[],
+  filas: { dni: string; celular: string; cliente: string }[] = [],
 ): Promise<{ ok: true; resultado: import("@/lib/shalom-server").ResultadoShalom } | { ok: false; error: string }> {
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
@@ -4268,7 +4269,7 @@ export async function registrarPedidosEnShalom(
   try {
     const { registrarEnShalom } = await import("@/lib/shalom-server");
     const archivo = Uint8Array.from(Buffer.from(archivoBase64, "base64"));
-    return await registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500));
+    return await registrarEnShalom(getSupabaseAdmin(), scope.workspaceId, archivo, pedidoIds.slice(0, 500), filas.slice(0, 500));
   } catch (error) {
     // Sin esto el navegador sólo ve "Minified React error": se devuelve el motivo.
     console.error("[shalom] registrar:", error);
