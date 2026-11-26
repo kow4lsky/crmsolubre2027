@@ -226,7 +226,11 @@ export async function actualizarEstadosShalom(
 
     await conexion.cliente.abrir();
     // El estado sólo viene en "Rastreo" (el historial no lo trae).
-    const envios = (await rastreo(conexion.cliente)).map(leerEnvioShalom);
+    let crudos = await rastreo(conexion.cliente);
+    // Si sin fechas no trae nada, se prueba con el rango de seguimiento.
+    if (!crudos.length) crudos = await rastreo(conexion.cliente, 60, { from_date: desde, to_date: dayKeyInZone(new Date(), ZONA) });
+    const forma = crudos.forma;
+    const envios = crudos.map(leerEnvioShalom);
     const porOrden = new Map(envios.filter((e) => e.orden).map((e) => [e.orden, e]));
 
     // Primero por N° de orden (el tracking); si no aparece, por DNI.
@@ -252,7 +256,8 @@ export async function actualizarEstadosShalom(
     const resumen =
       `Shalom tiene ${envios.length} envío(s) en Rastreo` +
       (porEstado.size ? ` (${[...porEstado].map(([estado, n]) => `${estado.toLowerCase()}: ${n}`).join(", ")})` : "") +
-      `; ${emparejados} de ${pedidos.length} pedidos del CRM se encontraron ahí.`;
+      `; ${emparejados} de ${pedidos.length} pedidos del CRM se encontraron ahí.` +
+      (envios.length ? "" : ` Respuesta de Shalom: ${forma.slice(0, 300)}`);
     await anotarConexion(supabase, "SHALOM", `Estados de Shalom: ${actualizados} cambiaron. ${resumen}`, {
       nivel: emparejados < pedidos.length ? "aviso" : "info",
       workspaceId: workspace.id,
