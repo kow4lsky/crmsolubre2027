@@ -3,6 +3,7 @@
 import {
   Archive,
   BarChart3,
+  PhoneCall,
   Boxes,
   Bot,
   CalendarDays,
@@ -53,6 +54,7 @@ import { AsistenteWidget, RAIZ_DEL_TEMA } from "@/components/asistente-widget";
 import { AuthGate } from "@/components/auth-gate";
 import { AnaliticaPanel } from "@/components/analitica-panel";
 import { AlertasDeStock, InventarioPanel } from "@/components/inventario-panel";
+import { LlamadasPanel } from "@/components/llamadas-panel";
 import { AutorizacionesPanel } from "@/components/autorizaciones-panel";
 import { AvisosPushCard } from "@/components/avisos-push-card";
 import { PedidosPanel } from "@/components/pedidos-panel";
@@ -105,6 +107,7 @@ type View =
   | "Pedidos"
   | "Pedidos pendientes"
   | "Autorizaciones"
+  | "Llamadas"
   | "Analítica"
   | "Inventario"
   | "Resumen"
@@ -132,6 +135,7 @@ const VIEW_SLUGS: Record<View, string> = {
   Pedidos: "pedidos",
   "Pedidos pendientes": "pendientes",
   Autorizaciones: "autorizaciones",
+  Llamadas: "llamadas",
   Analítica: "analitica",
   Inventario: "inventario",
   Resumen: "resumen",
@@ -166,6 +170,7 @@ const NAVIGATION: {
   { label: "Pedidos", icon: Package },
   { label: "Pedidos pendientes", icon: Sparkles },
   { label: "Autorizaciones", icon: ShieldCheck },
+  { label: "Llamadas", icon: PhoneCall },
   { label: "Analítica", icon: BarChart3 },
   { label: "Inventario", icon: Boxes },
   { label: "Resumen", icon: LayoutDashboard },
@@ -542,6 +547,8 @@ function Workspace({
             />
           ) : view === "Analítica" ? (
             <AnaliticaPanel workspaceId={context.workspaceId} rolVenta={context.rolVenta} onNotice={notify} />
+          ) : view === "Llamadas" ? (
+            <LlamadasPanel workspaceId={context.workspaceId} timezone={data.timezone} rolVenta={context.rolVenta} onNotice={notify} />
           ) : view === "Inventario" ? (
             <InventarioPanel workspaceId={context.workspaceId} rolVenta={context.rolVenta} timezone={data.timezone} onNotice={notify} />
           ) : view === "Autorizaciones" ? (

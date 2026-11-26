@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { actualizarFlujosDiario, sincronizarFlujos } from "@/lib/flujos-server";
+import { actualizarFlujosDiario, sincronizarFlujos, sincronizarLlamadas } from "@/lib/flujos-server";
 import { actualizarEstadosShalom, mantenerSesionShalom } from "@/lib/shalom-server";
 import { avisarLlamadas } from "@/lib/llamadas-server";
 import { avisarTareasVencidas } from "@/lib/tareas-server";
@@ -58,16 +58,18 @@ async function correr(request: NextRequest) {
   // Tareas vencidas, próximas llamadas y ventas nuevas de la IA en Flujos: el mismo reloj.
   // Los leads del día para la Analítica, cada hora.
   // Y el estado de los envíos de Shalom, cada 12 horas (y su sesión, viva cada 20 minutos).
-  const [tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion] = await Promise.all([
+  // Y los leads del día para Llamadas, cada 5 minutos.
+  const [tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia] = await Promise.all([
     avisarTareasVencidas(supabase),
     avisarLlamadas(supabase),
     sincronizarFlujos(supabase),
     actualizarFlujosDiario(supabase),
     actualizarEstadosShalom(supabase),
     mantenerSesionShalom(supabase),
+    sincronizarLlamadas(supabase),
   ]);
 
-  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion }));
+  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia }));
 
   return NextResponse.json({ ok: true, tareas, llamadas, flujos, flujosDiario, shalom });
 }

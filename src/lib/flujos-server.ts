@@ -165,3 +165,71 @@ export async function actualizarFlujosDiario(supabase: SupabaseClient, forzar = 
     return { ok: false, error: mensaje };
   }
 }
+
+/** Los leads del día para Llamadas se traen cada 5 minutos. */
+const LLAMADAS_CADA_MS = 5 * 60 * 1000;
+
+/**
+ * Trae de Flujos los leads que entraron hoy (hora de Lima) y los deja en la
+ * tabla de Llamadas. Actualiza nombre, celular, producto, etapa y etiquetas;
+ * lo que marcó la asesora (la llamada, el pedido enlazado) no se toca.
+ */
+export async function sincronizarLlamadas(supabase: SupabaseClient, forzar = false): Promise<ResultadoFlujos> {
+  const conexion = await credenciales("flujos", ["token", "url"]);
+  if (!conexion.ok) return { ok: true, omitido: "sin conexión", revisados: 0, deIA: 0, nuevos: 0 };
+
+  const ahora = Date.now();
+  const { data: estado } = await supabase.from("sincronizaciones").select("ultima_at").eq("clave", "llamadas").maybeSingle();
+  const ultima = estado?.ultima_at ? new Date(estado.ultima_at as string).getTime() : null;
+  if (!forzar && ultima && ahora - ultima < LLAMADAS_CADA_MS) {
+    return { ok: true, omitido: "consultado hace poco", revisados: 0, deIA: 0, nuevos: 0 };
+  }
+  await supabase.from("sincronizaciones").upsert({ clave: "llamadas", ultima_at: new Date(ahora).toISOString(), updated_at: new Date().toISOString() });
+
+  try {
+    const { data: workspace } = await supabase.from("workspaces").select("id").order("created_at").limit(1).maybeSingle();
+    if (!workspace) return { ok: false, error: "Todavía no hay workspace." };
+
+    const { leadDeLlamada } = await import("@/lib/llamadas");
+    const hoy = dayKeyInZone(new Date(ahora), "America/Lima");
+
+    // Los nombres de las etiquetas (los leads traen el id).
+    const etiquetas = new Map<string, string>();
+    try {
+      const r = await llamarFlujos(conexion.valores.url, conexion.valores.token, "lead_labels_list", {});
+      for (const e of (r.etiquetas ?? r.labels ?? r.items ?? []) as Record<string, unknown>[]) etiquetas.set(String(e.id), String(e.name ?? ""));
+    } catch {
+      // Sin nombres: se muestra el id.
+    }
+    const { data: productos } = await supabase.from("productos").select("nombre").eq("workspace_id", workspace.id);
+    const catalogo = (productos ?? []).map((p) => p.nombre as string);
+
+    const leads: PedidoFlujos[] = [];
+    for (let pagina = 0; pagina < PAGINAS_DE_LEADS; pagina++) {
+      const respuesta = await llamarFlujos(conexion.valores.url, conexion.valores.token, "leads_list", {
+        ...rangoDelDia(hoy),
+        limit: POR_PAGINA,
+        offset: pagina * POR_PAGINA,
+      });
+      const items = (respuesta.items ?? []) as PedidoFlujos[];
+      leads.push(...items);
+      if (!respuesta.has_more || items.length < POR_PAGINA) break;
+    }
+
+    const filas = leads
+      .map((lead) => leadDeLlamada(lead, etiquetas, catalogo))
+      .filter((f): f is NonNullable<typeof f> => f !== null)
+      .map((f) => ({ ...f, workspace_id: workspace.id, dia: hoy, actualizado_at: new Date().toISOString() }));
+    for (let i = 0; i < filas.length; i += 200) {
+      const { error } = await supabase.from("llamadas").upsert(filas.slice(i, i + 200), { onConflict: "workspace_id,lead_id" });
+      if (error) throw new Error(error.message);
+    }
+    await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "llamadas");
+    return { ok: true, revisados: leads.length, deIA: 0, nuevos: filas.length };
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error("[llamadas]", mensaje);
+    await supabase.from("sincronizaciones").update({ ultimo_error: mensaje.slice(0, 500) }).eq("clave", "llamadas");
+    return { ok: false, error: mensaje };
+  }
+}
