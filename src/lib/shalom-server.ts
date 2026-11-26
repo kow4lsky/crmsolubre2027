@@ -16,7 +16,16 @@ import {
   trackingShalom,
   type EnvioShalom,
 } from "@/lib/shalom-envios";
-import { ClienteShalomPro, SesionVencida, historial, pendientes, rastreo, registrarMasivo } from "@/lib/shalom-pro";
+import { nombreEnTresPartes } from "@/lib/envios-masivos";
+import {
+  ClienteShalomPro,
+  SesionVencida,
+  historial,
+  pendientes,
+  rastreo,
+  registrarMasivo,
+  type Destinatario,
+} from "@/lib/shalom-pro";
 
 const ZONA = "America/Lima";
 /** Los estados de Shalom se consultan cada 12 horas. */
@@ -84,6 +93,19 @@ async function anotar(supabase: SupabaseClient, pedido: PedidoShalom, envio: Env
   return nuevo;
 }
 
+function nombreDe(cliente: string) {
+  const { nombres, paterno, materno } = nombreEnTresPartes(cliente.toUpperCase());
+  return { nombres, paterno, materno };
+}
+
+/** El correo de la cuenta de Shalom PRO (lo pide su formulario de clientes). */
+function correoDe(yo: unknown): string {
+  const v = (yo && typeof yo === "object" ? yo : {}) as Record<string, unknown>;
+  const usuario = (v.user && typeof v.user === "object" ? v.user : v) as Record<string, unknown>;
+  const correo = String(usuario.email ?? v.email ?? "").trim();
+  return /@/.test(correo) ? correo : "";
+}
+
 /** El nombre o correo de la cuenta, de lo que devuelva /auth/me. */
 function cuentaDe(yo: unknown): string {
   const v = (yo && typeof yo === "object" ? yo : {}) as Record<string, unknown>;
@@ -130,6 +152,7 @@ export type ResultadoShalom = {
   sinTracking: string[];
   conError: string[];
   mensaje: string;
+  clientesNuevos?: string[];
 };
 
 /**
@@ -141,12 +164,20 @@ export async function registrarEnShalom(
   workspaceId: string,
   archivo: Uint8Array,
   pedidoIds: string[],
+  filas: { dni: string; celular: string; cliente: string }[] = [],
 ): Promise<{ ok: true; resultado: ResultadoShalom } | { ok: false; error: string }> {
   const conexion = await cliente();
   if (!conexion.ok) return conexion;
   try {
-    await conexion.cliente.abrir();
-    const registro = await registrarMasivo(conexion.cliente, archivo, conexion.clave);
+    const yo = await conexion.cliente.abrir();
+    // Por si Shalom no tiene registrado a algún destinatario: con esto el CRM
+    // lo registra (nombre y apellidos aparte) y vuelve a subir la tanda.
+    const destinatarios = new Map<string, Destinatario>();
+    for (const f of filas) {
+      const dni = f.dni.replace(/\D/g, "");
+      if (dni) destinatarios.set(dni, { dni, celular: f.celular.replace(/\D/g, "").slice(-9), ...nombreDe(f.cliente) });
+    }
+    const registro = await registrarMasivo(conexion.cliente, archivo, conexion.clave, destinatarios, correoDe(yo));
 
     const { data } = await supabase
       .from("pedidos")
@@ -179,7 +210,7 @@ export async function registrarEnShalom(
       `Registro masivo: ${registrados.length} con tracking, ${sinTracking.length} sin tracking todavía, ${conError.length} rechazados por Shalom.`,
       { nivel: conError.length || sinTracking.length ? "aviso" : "info", datos: { registrados, sinTracking, conError }, workspaceId },
     );
-    return { ok: true, resultado: { registrados, sinTracking, conError, mensaje: registro.mensaje } };
+    return { ok: true, resultado: { registrados, sinTracking, conError, mensaje: registro.mensaje, clientesNuevos: registro.clientesNuevos ?? [] } };
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error);
     await anotarConexion(supabase, "SHALOM", `No se pudo registrar en Shalom: ${mensaje}`, { workspaceId });
@@ -232,21 +263,31 @@ export async function actualizarEstadosShalom(
     const forma = crudos.forma;
     const envios = crudos.map(leerEnvioShalom);
     const porOrden = new Map(envios.filter((e) => e.orden).map((e) => [e.orden, e]));
+    const porCodigo = new Map(envios.filter((e) => e.codigo).map((e) => [e.codigo.toUpperCase(), e]));
 
-    // Primero por N° de orden (el tracking); si no aparece, por DNI.
-    const porDni = emparejarPorDni(pedidos, envios);
+    // Por N° de orden o por código del tracking ("105149320 - 3WND"). Sólo los
+    // que todavía no tienen tracking se buscan por DNI.
+    const porDni = emparejarPorDni(
+      pedidos.filter((p) => !ordenDelTracking(p.tracking)),
+      envios,
+    );
 
     let actualizados = 0;
     let emparejados = 0;
     for (const pedido of pedidos) {
       const ordenGuardada = ordenDelTracking(pedido.tracking);
-      const envio = (ordenGuardada ? porOrden.get(ordenGuardada) : undefined) ?? porDni.get(pedido.id);
+      const codigoGuardado = /-\s*([A-Z0-9]{3,6})\s*$/i.exec(pedido.tracking ?? "")?.[1]?.toUpperCase();
+      const envio =
+        (ordenGuardada ? porOrden.get(ordenGuardada) : undefined) ??
+        (codigoGuardado ? porCodigo.get(codigoGuardado) : undefined) ??
+        porDni.get(pedido.id);
       if (!envio) continue;
       emparejados += 1;
-      const orden = ordenGuardada && porOrden.has(ordenGuardada) ? ordenGuardada : null;
+      const orden = ordenGuardada;
       const cambiaEstado = estadoCrmDesdeShalom(envio.estado, pedido.estado);
       if (!cambiaEstado && pedido.estado_shalom === etiquetaShalom(envio.estado) && orden) continue;
-      await anotar(supabase, pedido, envio, orden ? null : conexion.clave);
+      // Traer estados nunca toca la clave: es la que se puso al registrar.
+      await anotar(supabase, pedido, envio, null);
       actualizados += 1;
     }
     await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom");
