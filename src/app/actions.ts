@@ -4277,6 +4277,23 @@ export async function registrarPedidosEnShalom(
   }
 }
 
+/** "Registrar como envío individual": para destinatarios que la carga masiva de Shalom no acepta. */
+export async function registrarIndividualesEnShalom(
+  filas: import("@/lib/shalom-server").FilaIndividual[],
+): Promise<{ ok: true; resultado: import("@/lib/shalom-server").ResultadoShalom } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden registrar en Shalom." };
+  if (!Array.isArray(filas) || filas.length === 0) return { ok: false, error: "No hay envíos para registrar." };
+  try {
+    const { registrarIndividualesEnShalom: registrar } = await import("@/lib/shalom-server");
+    return await registrar(getSupabaseAdmin(), scope.workspaceId, filas.slice(0, 20));
+  } catch (error) {
+    console.error("[shalom] individual:", error);
+    return { ok: false, error: `No se pudo registrar el envío individual: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
 /** "Registrar en Swayp": crea las guías de los pedidos de Lima con la API de Swayp. */
 export async function registrarPedidosEnSwayp(
   filas: import("@/lib/swayp-envios").FilaSwayp[],

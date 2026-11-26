@@ -23,9 +23,11 @@ import {
   historial,
   pendientes,
   rastreo,
+  registrarIndividual,
   registrarMasivo,
   type Destinatario,
 } from "@/lib/shalom-pro";
+import { ORIGEN_SHALOM } from "@/lib/agencias-shalom";
 
 const ZONA = "America/Lima";
 /** Los estados de Shalom se consultan cada 12 horas. */
@@ -318,4 +320,73 @@ export async function actualizarEstadosShalom(
     await anotarConexion(supabase, "SHALOM", `No se pudieron traer los estados: ${mensaje}`);
     return { ok: false, error: error instanceof SesionVencida ? error.message : `No se pudo consultar Shalom PRO: ${mensaje}` };
   }
+}
+
+export type FilaIndividual = { pedidoId: string; dni: string; celular: string; cliente: string; agencia: string; caja: "PAQUETE S" | "PAQUETE M" };
+
+/**
+ * "Registrar como envío individual": para los destinatarios que la carga
+ * masiva no acepta. Crea cada envío como la pantalla de envío individual de
+ * Shalom PRO y anota tracking, clave y costo en el pedido.
+ */
+export async function registrarIndividualesEnShalom(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  filas: FilaIndividual[],
+): Promise<{ ok: true; resultado: ResultadoShalom } | { ok: false; error: string }> {
+  const conexion = await cliente();
+  if (!conexion.ok) return conexion;
+  const yo = await conexion.cliente.abrir();
+  const { data } = await supabase
+    .from("pedidos")
+    .select(COLUMNAS)
+    .eq("workspace_id", workspaceId)
+    .in(
+      "id",
+      filas.map((f) => f.pedidoId),
+    );
+  const pedidos = (data ?? []) as PedidoShalom[];
+
+  const registrados: ResultadoShalom["registrados"] = [];
+  const conError: string[] = [];
+  for (const fila of filas) {
+    const pedido = pedidos.find((p) => p.id === fila.pedidoId);
+    if (!pedido) continue;
+    try {
+      const nombre = nombreDe(fila.cliente);
+      const r = await registrarIndividual(
+        conexion.cliente,
+        {
+          dni: fila.dni.replace(/\D/g, ""),
+          celular: fila.celular.replace(/\D/g, "").slice(-9),
+          ...nombre,
+          agencia: fila.agencia,
+          origen: ORIGEN_SHALOM,
+          caja: fila.caja,
+          clave: conexion.clave,
+        },
+        yo,
+      );
+      const envio: EnvioShalom = { orden: r.guia, codigo: r.codigo, dni: fila.dni, estado: "en_origen", costo: r.precio, destino: fila.agencia };
+      await anotar(supabase, pedido, envio, conexion.clave, true);
+      registrados.push({ codigo: pedido.codigo, tracking: trackingShalom(envio), costo: r.precio });
+    } catch (error) {
+      conError.push(`${pedido.codigo}: ${error instanceof Error ? error.message.replace(/^Shalom PRO:\s*/, "") : String(error)}`);
+    }
+  }
+  await anotarConexion(
+    supabase,
+    "SHALOM",
+    `Envíos individuales: ${registrados.length} registrados, ${conError.length} con error.${conError.length ? ` ${conError.join(" · ")}` : ""}`,
+    { nivel: conError.length ? "aviso" : "info", workspaceId },
+  );
+  return {
+    ok: true,
+    resultado: {
+      registrados,
+      sinTracking: [],
+      conError,
+      mensaje: registrados.length ? "Envíos individuales registrados." : "No se registró ningún envío individual.",
+    },
+  };
 }

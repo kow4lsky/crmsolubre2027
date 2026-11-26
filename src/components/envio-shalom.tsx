@@ -2,7 +2,7 @@
 
 import JSZip from "jszip";
 
-import { registrarPedidosEnShalom } from "@/app/actions";
+import { registrarIndividualesEnShalom, registrarPedidosEnShalom } from "@/app/actions";
 import { Download, Send, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -85,6 +85,7 @@ export function EnvioShalom({
   const [generando, setGenerando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoShalom | null>(null);
   const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
+  const [individuales, setIndividuales] = useState<ResultadoShalom | null>(null);
 
   const cambiar = (i: number, cambio: Partial<Fila>) => setFilas((actual) => actual.map((f, j) => (j === i ? { ...f, ...cambio } : f)));
   const quitar = (id: string) => setFilas((actual) => actual.filter((f) => f.pedido.id !== id));
@@ -128,6 +129,35 @@ export function EnvioShalom({
       onNotice(`Listo: ${filas.length} envíos en el archivo para Shalom.`);
     } catch (falla) {
       onNotice(falla instanceof Error ? falla.message : "No se pudo armar el archivo.");
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  /** Los que la carga masiva no acepta, como "envío individual" de Shalom PRO. */
+  const registrarIndividuales = async () => {
+    setGenerando(true);
+    try {
+      const r = await registrarIndividualesEnShalom(
+        filasRechazadas.map((f) => ({
+          pedidoId: f.pedido.id,
+          dni: f.documento,
+          celular: f.telefono,
+          cliente: f.pedido.cliente,
+          agencia: f.destino,
+          caja: f.caja,
+        })),
+      );
+      if (!r.ok) return setErrorRegistro(r.error);
+      setIndividuales(r.resultado);
+      const hechos = new Set(r.resultado.registrados.map((x) => x.codigo));
+      if (hechos.size) {
+        setFilas((actual) => actual.filter((f) => !hechos.has(f.pedido.codigo)));
+        setErrorRegistro(null);
+        onRegistrado?.();
+      }
+    } catch (falla) {
+      setErrorRegistro(falla instanceof Error ? falla.message : "No se pudo registrar el envío individual.");
     } finally {
       setGenerando(false);
     }
@@ -280,6 +310,23 @@ export function EnvioShalom({
             )}
           </div>
         )}
+        {individuales && (
+          <div className="space-y-1 rounded-xl border border-sky-300 bg-sky-50 p-3 text-xs dark:border-sky-400/30 dark:bg-sky-400/10">
+            <p className="font-semibold">Envíos individuales: {individuales.registrados.length} registrado(s).</p>
+            {individuales.registrados.map((r) => (
+              <p key={r.codigo}>
+                ✅ <b>{r.codigo}</b> · {r.tracking}
+                {r.costo !== null && ` · S/ ${r.costo.toFixed(2)}`}
+              </p>
+            ))}
+            {individuales.conError.map((e) => (
+              <p key={e} className="text-red-800 dark:text-red-200">
+                ⚠️ {e}
+              </p>
+            ))}
+            {individuales.registrados.length > 0 && filas.length > 0 && <p>Ahora registra los demás con &quot;Registrar en Shalom&quot;.</p>}
+          </div>
+        )}
         {resultado && (
           <div className="space-y-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-400/30 dark:bg-emerald-400/10">
             <p className="font-semibold">
@@ -318,6 +365,11 @@ export function EnvioShalom({
           <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>
             Cerrar
           </button>
+          {filasRechazadas.length > 0 && !resultado && (
+            <button type="button" disabled={generando} onClick={() => void registrarIndividuales()} className={BOTON_SECUNDARIO}>
+              <Send className="size-4" /> Registrar {filasRechazadas.length === 1 ? "ese" : `esos ${filasRechazadas.length}`} como envío individual
+            </button>
+          )}
           {filasRechazadas.length > 0 && !resultado && (
             <button
               type="button"

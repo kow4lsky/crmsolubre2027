@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
 
-import { ClienteShalomPro, SesionVencida, dnisNoRegistrados, historial, rastreo, registrarMasivo } from "../src/lib/shalom-pro.ts";
+import { ClienteShalomPro, SesionVencida, dnisNoRegistrados, historial, rastreo, registrarIndividual, registrarMasivo } from "../src/lib/shalom-pro.ts";
 import {
   cookieDeSesion,
   emparejarPorDni,
@@ -200,6 +200,61 @@ test("si Shalom no tiene al destinatario, lo registra y vuelve a subir la tanda"
     assert.equal(personaCreada?.["sur_name"], "AGUINAGA");
     assert.equal(personaCreada?.["last_name"], "PAZ");
     assert.equal(personaCreada?.["phone"], "996971715");
+  } finally {
+    servidor.close();
+  }
+});
+
+test("envío individual: agencias, paquete, tarifa, destinatario a mano y la guía", async () => {
+  let enviado: Record<string, unknown> | null = null;
+  let destinatario: Record<string, unknown> | null = null;
+  const servidor = http.createServer((req, res) => {
+    let cuerpo = "";
+    req.on("data", (c) => (cuerpo += c));
+    req.on("end", () => {
+      const json = (data: unknown, success = true) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success, data }));
+      };
+      if (req.url === "/sanctum/csrf-cookie") return res.writeHead(204).end();
+      if (req.url === "/api/v1/auth/me") return json({ email: "x@y" });
+      if (req.url === "/api/v1/envia_ya/terminals")
+        return json({ Map: [
+          { ter_id: 10, lugar_over: "Av Jose Leal Cdra 6", origen: 1, destino: 1, ter_habilitado_OS: 1 },
+          { ter_id: 77, lugar_over: "AV PARRA 379", origen: 1, destino: 1, ter_habilitado_OS: 1 },
+        ] });
+      if (req.url === "/api/v1/envia_ya/products") return json([{ id: 4, title: "Caja Paquete M", content: "3 kg" }, { id: 3, title: "Sobre" }]);
+      if (req.url === "/api/v1/envia_ya/tariff/calculate") return json({ tariff: { cajapaquetem: 18, cajapaquetes: 14 } });
+      if (req.url === "/api/v1/service-orders/recipients/search") return json(null, false);
+      if (req.url === "/api/v1/service-orders/recipients/save") {
+        destinatario = JSON.parse(cuerpo);
+        return json({ uuid: "u-1" });
+      }
+      if (req.url === "/api/v1/envia_ya/service_order/save") {
+        enviado = JSON.parse(cuerpo);
+        return json({ guia: "105512999", serie: "S", codigo: "AB12", ose_id: 5, precio: "18.00" });
+      }
+      res.writeHead(404).end();
+    });
+  });
+  await new Promise<void>((r) => servidor.listen(0, r));
+  const base = `http://127.0.0.1:${(servidor.address() as { port: number }).port}`;
+  try {
+    const cliente = new ClienteShalomPro("enviashalom_session=x", base);
+    const r = await registrarIndividual(
+      cliente,
+      { dni: "45083470", celular: "958192929", nombres: "BRATZO", paterno: "REYES", materno: "ALBARRACIN", agencia: "AV PARRA 379", origen: "AV JOSE LEAL CDRA 6", caja: "PAQUETE M", clave: "1127" },
+      { company: { legal_name: "CLEANCORP SOLUCIONES EIRL", phone: "999999999" } },
+    );
+    assert.deepEqual(r, { guia: "105512999", codigo: "AB12", precio: 18 });
+    assert.equal(destinatario?.["last_name"], "REYES");
+    assert.equal(enviado?.["origen"], 10);
+    assert.equal(enviado?.["destino"], 77);
+    assert.equal(enviado?.["tipo_producto"], 4);
+    assert.equal(enviado?.["costo"], 18);
+    assert.equal(enviado?.["destinatario_uuid"], "u-1");
+    assert.equal(enviado?.["clave"], "1127");
+    assert.equal(enviado?.["remitente_nombre"], "CLEANCORP SOLUCIONES EIRL");
   } finally {
     servidor.close();
   }
