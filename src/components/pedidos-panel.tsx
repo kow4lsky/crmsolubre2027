@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCopy,
+  Printer,
   Download,
   FileSpreadsheet,
   Plus,
@@ -54,6 +55,7 @@ import {
   type Pedido,
   type RolVenta,
 } from "@/lib/pedidos";
+import { htmlDeEtiquetas } from "@/lib/etiquetas";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
 const SELECT_CLASS =
@@ -921,6 +923,22 @@ function EtiquetaModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** La hoja A4 con 10 etiquetas por página, lista para imprimir. */
+  const imprimir = () => {
+    const datos = pedidos.map((p) => ({
+      tracking: p.tracking ?? "",
+      cliente: p.cliente ?? "",
+      dni: p.dni ?? "",
+      direccion: p.direccion ?? "",
+      pedido: p.pedido ?? "",
+    }));
+    const ventana = window.open("", "_blank");
+    if (!ventana) return onNotice("El navegador bloqueó la ventana: permite las ventanas emergentes para este sitio.");
+    // Si existe public/etiqueta-logo.png se usa; si no, el texto SOLUBRE.
+    ventana.document.write(htmlDeEtiquetas(datos, `${window.location.origin}/etiqueta-logo.png`));
+    ventana.document.close();
+  };
+
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(texto);
@@ -974,9 +992,12 @@ function EtiquetaModal({
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={copiar} className={PRIMARY_BUTTON_CLASS}>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={copiar} className={BOTON_SECUNDARIO}>
           <ClipboardCopy className="size-4" /> Copiar etiquetas
+        </button>
+        <button type="button" onClick={imprimir} className={PRIMARY_BUTTON_CLASS}>
+          <Printer className="size-4" /> Imprimir etiquetas ({pedidos.length})
         </button>
       </div>
     </Modal>
