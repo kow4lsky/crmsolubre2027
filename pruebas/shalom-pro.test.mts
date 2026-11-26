@@ -224,7 +224,8 @@ test("env√≠o individual: agencias, paquete, tarifa, destinatario a mano y la gu√
           { ter_id: 77, lugar_over: "AV PARRA 379", origen: 1, destino: 1, ter_habilitado_OS: 1 },
         ] });
       if (req.url === "/api/v1/envia_ya/products") return json([{ id: 4, title: "Caja Paquete M", content: "3 kg" }, { id: 3, title: "Sobre" }]);
-      if (req.url === "/api/v1/envia_ya/tariff/calculate") return json({ tariff: { cajapaquetem: 18, cajapaquetes: 14 } });
+      // Como Shalom: envuelto dos veces.
+      if (req.url === "/api/v1/envia_ya/tariff/calculate") return json({ success: true, data: { tariff: { cajapaquetem: 18, cajapaquetes: 14 } } });
       if (req.url === "/api/v1/service-orders/recipients/search") return json(null, false);
       if (req.url === "/api/v1/service-orders/recipients/save") {
         destinatario = JSON.parse(cuerpo);
@@ -232,7 +233,7 @@ test("env√≠o individual: agencias, paquete, tarifa, destinatario a mano y la gu√
       }
       if (req.url === "/api/v1/envia_ya/service_order/save") {
         enviado = JSON.parse(cuerpo);
-        return json({ guia: "105512999", serie: "S", codigo: "AB12", ose_id: 5, precio: "18.00" });
+        return json({ success: true, data: { guia: "105512999", serie: "S", codigo: "AB12", ose_id: 5, precio: "18.00" } });
       }
       res.writeHead(404).end();
     });

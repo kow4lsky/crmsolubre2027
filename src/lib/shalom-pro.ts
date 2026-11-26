@@ -385,6 +385,22 @@ const sinTildes = (texto: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/**
+ * Algunas respuestas de "envía ya" vienen envueltas dos veces
+ * ({ success, data: { success, data: {...} } }): la web lee data.data.
+ * Se desenvuelven todas; un success=false adentro es un error.
+ */
+function desenvolver(valor: unknown): Record<string, unknown> | null {
+  let actual = valor;
+  for (let i = 0; i < 4 && actual && typeof actual === "object" && !Array.isArray(actual); i++) {
+    const v = actual as Record<string, unknown>;
+    if (!("success" in v) || !("data" in v)) break;
+    if (v.success === false) throw new Error(`Shalom PRO: ${String(v.message ?? v.msg ?? "no se pudo")}`);
+    actual = v.data;
+  }
+  return actual && typeof actual === "object" && !Array.isArray(actual) ? (actual as Record<string, unknown>) : null;
+}
+
 /** "Caja Paquete M" → "cajapaquetem", como compara la web de Shalom. */
 const claveDeProducto = (titulo: string) => sinTildes(titulo).toLowerCase().replace(/\s+/g, "");
 
@@ -434,22 +450,25 @@ export async function registrarIndividual(cliente: ClienteShalomPro, envio: Envi
   const claveProducto = claveDeProducto(String(producto.title));
 
   // 3. La tarifa de esa ruta para ese paquete.
-  const tarifa = (await cliente.pedir("POST", "/envia_ya/tariff/calculate", {
+  const respuestaTarifa = await cliente.pedir("POST", "/envia_ya/tariff/calculate", {
     origin: origen.ter_id,
     destiny: destino.ter_id,
     width: "",
     height: "",
     length: "",
     weight: "",
-  })) as Record<string, unknown> | null;
+  });
+  const tarifa = desenvolver(respuestaTarifa);
   const tarifas = (tarifa?.tariff ?? {}) as Record<string, unknown>;
   const precio = Number(tarifas[claveProducto] ?? tarifas[envio.caja === "PAQUETE M" ? "cajapaquetem" : "cajapaquetes"]);
-  if (!Number.isFinite(precio) || precio <= 0) throw new Error("Shalom no dio la tarifa de esa ruta.");
+  if (!Number.isFinite(precio) || precio <= 0) {
+    throw new Error(`Shalom no dio la tarifa de esa ruta (producto ${claveProducto}; respuesta ${formaDe(respuestaTarifa).slice(0, 200)}).`);
+  }
 
   // 4. El destinatario: si Shalom no lo tiene, se registra con lo que se sabe.
   const buscarDestinatario = async () => {
     try {
-      const r = (await cliente.pedir("POST", "/service-orders/recipients/search", { document: envio.dni })) as Record<string, unknown> | null;
+      const r = desenvolver(await cliente.pedir("POST", "/service-orders/recipients/search", { document: envio.dni }));
       return r?.uuid ? String(r.uuid) : null;
     } catch {
       return null;
@@ -457,14 +476,14 @@ export async function registrarIndividual(cliente: ClienteShalomPro, envio: Envi
   };
   let uuid = await buscarDestinatario();
   if (!uuid) {
-    const guardado = (await cliente.pedir("POST", "/service-orders/recipients/save", {
+    const guardado = desenvolver(await cliente.pedir("POST", "/service-orders/recipients/save", {
       document: envio.dni,
       first_name: envio.nombres,
       last_name: envio.paterno,
       surname: envio.materno || envio.paterno,
       email: "",
       phone: envio.celular,
-    })) as Record<string, unknown> | null;
+    }));
     uuid = guardado?.uuid ? String(guardado.uuid) : await buscarDestinatario();
   }
   if (!uuid) throw new Error("Shalom no guardó al destinatario.");
@@ -484,7 +503,7 @@ export async function registrarIndividual(cliente: ClienteShalomPro, envio: Envi
 
   // 6. El envío, con los mismos campos que manda la web.
   const aereo = Number(origen.aereo ?? 0) === 1 || Number(destino.aereo ?? 0) === 1 ? 1 : 0;
-  const creado = (await cliente.pedir("POST", "/envia_ya/service_order/save", {
+  const respuestaEnvio = await cliente.pedir("POST", "/envia_ya/service_order/save", {
     origen: origen.ter_id,
     destino: destino.ter_id,
     tipo_pago: "REMITENTE",
@@ -513,9 +532,10 @@ export async function registrarIndividual(cliente: ClienteShalomPro, envio: Envi
     servicio_cobranza: 0,
     servicio_cobranza_costo: 0,
     declaracion_jurada: "",
-  })) as Record<string, unknown> | null;
+  });
+  const creado = desenvolver(respuestaEnvio);
   const guia = String(creado?.guia ?? "");
-  if (!guia) throw new Error("Shalom no devolvió la guía del envío.");
+  if (!guia) throw new Error(`Shalom no devolvió la guía del envío (respuesta ${formaDe(respuestaEnvio).slice(0, 200)}).`);
   const precioFinal = Number(creado?.precio);
   return { guia, codigo: String(creado?.codigo ?? ""), precio: Number.isFinite(precioFinal) ? precioFinal : precio };
 }
