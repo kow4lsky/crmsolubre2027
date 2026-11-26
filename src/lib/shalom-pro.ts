@@ -374,3 +374,148 @@ export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 60, fi
 export async function pendientes(cliente: ClienteShalomPro) {
   return lista(await pedirLista(cliente, "/service-orders/shipments/pending-approval"));
 }
+
+/* ------------------------------------------------------- envío individual */
+
+const sinTildes = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** "Caja Paquete M" → "cajapaquetem", como compara la web de Shalom. */
+const claveDeProducto = (titulo: string) => sinTildes(titulo).toLowerCase().replace(/\s+/g, "");
+
+export type EnvioIndividual = {
+  dni: string;
+  celular: string;
+  nombres: string;
+  paterno: string;
+  materno: string;
+  /** El nombre de la agencia de destino, como en la plantilla ("AV PARRA 379"). */
+  agencia: string;
+  /** El de la agencia de origen ("AV JOSE LEAL CDRA 6"). */
+  origen: string;
+  caja: "PAQUETE S" | "PAQUETE M";
+  clave: string;
+};
+
+export type ResultadoIndividual = { guia: string; codigo: string; precio: number | null };
+
+/**
+ * Un envío como el "envío individual" de Shalom PRO. Sirve para el
+ * destinatario que la carga masiva no acepta (su DNI no está en la base de
+ * Shalom): se llena a mano nombre, apellidos y celular, como en esa pantalla.
+ */
+export async function registrarIndividual(cliente: ClienteShalomPro, envio: EnvioIndividual, yo: unknown): Promise<ResultadoIndividual> {
+  // 1. Las agencias: origen y destino.
+  const respuestaTerminales = (await cliente.pedir("POST", "/envia_ya/terminals")) as Record<string, unknown> | null;
+  const terminales = (
+    (respuestaTerminales?.Map as unknown[]) ??
+    ((respuestaTerminales?.data as Record<string, unknown> | undefined)?.Map as unknown[]) ??
+    lista(respuestaTerminales)
+  ) as Record<string, unknown>[];
+  if (!terminales?.length) throw new Error("Shalom no devolvió la lista de agencias.");
+  const nombreDe = (t: Record<string, unknown>) => sinTildes(String(t.lugar_over ?? ""));
+  const origen = terminales.find((t) => nombreDe(t) === sinTildes(envio.origen) && Number(t.origen) === 1);
+  const destino = terminales.find(
+    (t) => nombreDe(t) === sinTildes(envio.agencia) && Number(t.destino) === 1 && Number(t.ter_habilitado_OS ?? 1) === 1,
+  );
+  if (!origen) throw new Error(`No encontré la agencia de origen "${envio.origen}" en Shalom.`);
+  if (!destino) throw new Error(`No encontré la agencia de destino "${envio.agencia}" en Shalom (o no recibe envíos).`);
+
+  // 2. El tipo de paquete.
+  const productos = lista(await cliente.pedir("POST", "/envia_ya/products"));
+  const buscadas = envio.caja === "PAQUETE M" ? ["cajapaquetem", "paquetemediano"] : ["cajapaquetes", "paqueteria"];
+  const producto = productos.find((p) => buscadas.includes(claveDeProducto(String(p.title ?? ""))));
+  if (!producto) throw new Error(`Shalom no tiene el producto ${envio.caja}.`);
+  const claveProducto = claveDeProducto(String(producto.title));
+
+  // 3. La tarifa de esa ruta para ese paquete.
+  const tarifa = (await cliente.pedir("POST", "/envia_ya/tariff/calculate", {
+    origin: origen.ter_id,
+    destiny: destino.ter_id,
+    width: "",
+    height: "",
+    length: "",
+    weight: "",
+  })) as Record<string, unknown> | null;
+  const tarifas = (tarifa?.tariff ?? {}) as Record<string, unknown>;
+  const precio = Number(tarifas[claveProducto] ?? tarifas[envio.caja === "PAQUETE M" ? "cajapaquetem" : "cajapaquetes"]);
+  if (!Number.isFinite(precio) || precio <= 0) throw new Error("Shalom no dio la tarifa de esa ruta.");
+
+  // 4. El destinatario: si Shalom no lo tiene, se registra con lo que se sabe.
+  const buscarDestinatario = async () => {
+    try {
+      const r = (await cliente.pedir("POST", "/service-orders/recipients/search", { document: envio.dni })) as Record<string, unknown> | null;
+      return r?.uuid ? String(r.uuid) : null;
+    } catch {
+      return null;
+    }
+  };
+  let uuid = await buscarDestinatario();
+  if (!uuid) {
+    const guardado = (await cliente.pedir("POST", "/service-orders/recipients/save", {
+      document: envio.dni,
+      first_name: envio.nombres,
+      last_name: envio.paterno,
+      surname: envio.materno || envio.paterno,
+      email: "",
+      phone: envio.celular,
+    })) as Record<string, unknown> | null;
+    uuid = guardado?.uuid ? String(guardado.uuid) : await buscarDestinatario();
+  }
+  if (!uuid) throw new Error("Shalom no guardó al destinatario.");
+
+  // 5. El remitente: la cuenta (empresa o persona).
+  const v = (yo && typeof yo === "object" ? yo : {}) as Record<string, unknown>;
+  const empresa = (v.company ?? (v.user as Record<string, unknown> | undefined)?.company) as Record<string, unknown> | undefined;
+  const persona = (v.person ?? (v.user as Record<string, unknown> | undefined)?.person) as Record<string, unknown> | undefined;
+  const remitente = empresa
+    ? { nombre: String(empresa.legal_name ?? ""), paterno: "", materno: "", telefono: String(empresa.phone ?? v.phone ?? "") }
+    : {
+        nombre: String(persona?.name ?? persona?.full_name ?? ""),
+        paterno: String(persona?.last_name ?? persona?.lastname ?? ""),
+        materno: String(persona?.sur_name ?? persona?.surname ?? ""),
+        telefono: String(persona?.phone ?? v.phone ?? ""),
+      };
+
+  // 6. El envío, con los mismos campos que manda la web.
+  const aereo = Number(origen.aereo ?? 0) === 1 || Number(destino.aereo ?? 0) === 1 ? 1 : 0;
+  const creado = (await cliente.pedir("POST", "/envia_ya/service_order/save", {
+    origen: origen.ter_id,
+    destino: destino.ter_id,
+    tipo_pago: "REMITENTE",
+    tipo_producto: producto.id,
+    tipo_producto_json: { value: precio, name: producto.title, detalle: producto.content ?? "" },
+    cantidad: 1,
+    peso: "",
+    alto: "",
+    largo: "",
+    ancho: "",
+    costo: precio,
+    destinatario_uuid: uuid,
+    remitente_telefono: remitente.telefono,
+    remitente_nombre: remitente.nombre,
+    remitente_apellido_paterno: remitente.paterno,
+    remitente_apellido_materno: remitente.materno,
+    garantia: 0,
+    garantia_costo: 0,
+    garantia_monto: 0,
+    garantia_porcentaje: 0,
+    contact_extra_uuid: null,
+    contacto_doc: null,
+    grrs: "[]",
+    clave: envio.clave,
+    aereo,
+    servicio_cobranza: 0,
+    servicio_cobranza_costo: 0,
+    declaracion_jurada: "",
+  })) as Record<string, unknown> | null;
+  const guia = String(creado?.guia ?? "");
+  if (!guia) throw new Error("Shalom no devolvió la guía del envío.");
+  const precioFinal = Number(creado?.precio);
+  return { guia, codigo: String(creado?.codigo ?? ""), precio: Number.isFinite(precioFinal) ? precioFinal : precio };
+}
