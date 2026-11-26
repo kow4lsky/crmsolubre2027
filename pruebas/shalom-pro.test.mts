@@ -195,10 +195,10 @@ test("si Shalom no tiene al destinatario, lo registra y vuelve a subir la tanda"
     const r = await registrarMasivo(cliente, new Uint8Array([1]), "1127", destinatarios, "cuenta@solubre.pe");
     assert.deepEqual(r.enviados.map((b) => b.id), [9]);
     assert.equal(r.clientesNuevos?.length, 1);
-    // Como el envío individual: first_name, last_name (paterno), surname (materno).
-    assert.equal(personaCreada?.["first_name"], "GUILLERMINA");
-    assert.equal(personaCreada?.["last_name"], "AGUINAGA");
-    assert.equal(personaCreada?.["surname"], "PAZ");
+    // Como el formulario de Clientes: sur_name (paterno), last_name (materno).
+    assert.equal(personaCreada?.["name"], "GUILLERMINA");
+    assert.equal(personaCreada?.["sur_name"], "AGUINAGA");
+    assert.equal(personaCreada?.["last_name"], "PAZ");
     assert.equal(personaCreada?.["phone"], "996971715");
   } finally {
     servidor.close();
