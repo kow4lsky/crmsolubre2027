@@ -119,6 +119,21 @@ export class ClienteShalomPro {
   }
 }
 
+/**
+ * Shalom contesta una lista vacía como si fuera un error ("Aún no ha agregado
+ * envíos a su lista"). Para el CRM es sólo una lista vacía.
+ */
+const LISTA_VACIA = /no ha agregado|no hay (env|registr|resultad)|no se encontr|sin registros|no tiene env|no existen/i;
+
+export async function pedirLista(cliente: ClienteShalomPro, ruta: string): Promise<unknown> {
+  try {
+    return await cliente.pedir("GET", ruta);
+  } catch (error) {
+    if (!(error instanceof SesionVencida) && error instanceof Error && LISTA_VACIA.test(error.message)) return [];
+    throw error;
+  }
+}
+
 /** Una lista de lo que devuelva Shalom: un arreglo, o un paginado { data: [...] }. */
 export function lista(valor: unknown, profundidad = 0): Record<string, unknown>[] {
   if (Array.isArray(valor)) return valor as Record<string, unknown>[];
@@ -168,7 +183,7 @@ export type ResultadoDelRegistro = {
  * nuevos, les pone la clave de seguridad y los envía.
  */
 export async function registrarMasivo(cliente: ClienteShalomPro, archivo: Uint8Array, clave: string): Promise<ResultadoDelRegistro> {
-  const antes = new Set(lista(await cliente.pedir("GET", "/service-orders")).map((b) => String(b.id)));
+  const antes = new Set(lista(await pedirLista(cliente, "/service-orders")).map((b) => String(b.id)));
 
   const formulario = new FormData();
   formulario.append(
@@ -178,7 +193,7 @@ export async function registrarMasivo(cliente: ClienteShalomPro, archivo: Uint8A
   );
   await cliente.pedir("POST", "/service-orders/import", formulario);
 
-  const nuevos = lista(await cliente.pedir("GET", "/service-orders")).filter((b) => !antes.has(String(b.id)));
+  const nuevos = lista(await pedirLista(cliente, "/service-orders")).filter((b) => !antes.has(String(b.id)));
   const conError = nuevos.filter((b) => b.error);
   const listos = nuevos.filter((b) => !b.error);
   if (listos.length === 0) {
@@ -196,7 +211,7 @@ export async function historial(cliente: ClienteShalomPro, desde: string, hasta:
   const todos: Record<string, unknown>[] = [];
   for (let pagina = 1; pagina <= paginasMaximas; pagina++) {
     const params = new URLSearchParams({ page: String(pagina), from_date: desde, to_date: hasta });
-    const respuesta = await cliente.pedir("GET", `/service-orders/shipments/history?${params}`);
+    const respuesta = await pedirLista(cliente, `/service-orders/shipments/history?${params}`);
     todos.push(...lista(respuesta));
     if (!hayOtraPagina(respuesta)) break;
   }
@@ -213,7 +228,7 @@ export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 60, fi
   for (let pagina = 1; pagina <= paginasMaximas; pagina++) {
     // Los mismos parámetros que manda la pantalla Rastreo de Shalom PRO.
     const params = new URLSearchParams({ page: String(pagina), document_type: "DNI", order_by: "desc", per_page: "20", ...filtros });
-    const respuesta = await cliente.pedir("GET", `/service-orders/shipments/tracking?${params}`);
+    const respuesta = await pedirLista(cliente, `/service-orders/shipments/tracking?${params}`);
     if (pagina === 1) forma = formaDe(respuesta);
     const items = lista(respuesta);
     todos.push(...items);
@@ -224,5 +239,5 @@ export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 60, fi
 
 /** Los envíos registrados que esperan que se lleven a la agencia. */
 export async function pendientes(cliente: ClienteShalomPro) {
-  return lista(await cliente.pedir("GET", "/service-orders/shipments/pending-approval"));
+  return lista(await pedirLista(cliente, "/service-orders/shipments/pending-approval"));
 }
