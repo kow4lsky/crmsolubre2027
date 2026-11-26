@@ -171,6 +171,11 @@ test("si Shalom no tiene al destinatario, lo registra y vuelve a subir la tanda"
         return json({ total: 1 });
       }
       if (req.url === "/api/v1/person/search") return json({ name: "GUILLERMINA", surname: "AGUINAGA", lastname: "PAZ", document: "16668407" });
+      if (req.url === "/api/v1/service-orders/recipients/save") {
+        personaCreada = JSON.parse(cuerpo);
+        registrado = true;
+        return json({ id: 1 });
+      }
       if (req.url === "/api/v1/person") {
         personaCreada = JSON.parse(cuerpo);
         registrado = true;
@@ -190,10 +195,11 @@ test("si Shalom no tiene al destinatario, lo registra y vuelve a subir la tanda"
     const r = await registrarMasivo(cliente, new Uint8Array([1]), "1127", destinatarios, "cuenta@solubre.pe");
     assert.deepEqual(r.enviados.map((b) => b.id), [9]);
     assert.equal(r.clientesNuevos?.length, 1);
-    assert.equal(personaCreada?.["sur_name"], "AGUINAGA");
-    assert.equal(personaCreada?.["last_name"], "PAZ");
+    // Como el envío individual: first_name, last_name (paterno), surname (materno).
+    assert.equal(personaCreada?.["first_name"], "GUILLERMINA");
+    assert.equal(personaCreada?.["last_name"], "AGUINAGA");
+    assert.equal(personaCreada?.["surname"], "PAZ");
     assert.equal(personaCreada?.["phone"], "996971715");
-    assert.equal(personaCreada?.["email"], "cuenta@solubre.pe");
   } finally {
     servidor.close();
   }

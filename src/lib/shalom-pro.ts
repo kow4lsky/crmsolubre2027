@@ -210,35 +210,51 @@ export async function registrarDestinatario(cliente: ClienteShalomPro, d: Destin
   } catch {
     // Shalom no tiene el DNI: se usan los nombres del CRM.
   }
-  if (!nombres || !paterno) return { ok: false, mensaje: `${d.dni}: falta el nombre para registrarlo en Shalom.` };
-  if (d.celular.replace(/\D/g, "").length !== 9) return { ok: false, mensaje: `${d.dni}: Shalom pide un celular de 9 dígitos.` };
+  if (!nombres || !paterno) return { ok: false, mensaje: `documento: ${d.dni} (falta el nombre para registrarlo en Shalom)` };
+  const celular = d.celular.replace(/\D/g, "");
+  if (celular.length !== 9) return { ok: false, mensaje: `documento: ${d.dni} (Shalom pide un celular de 9 dígitos)` };
+  const nombreCompleto = `${d.dni}: ${paterno} ${materno}, ${nombres}`.replace(/\s+,/, ",");
+
+  // Como el envío individual de Shalom PRO ("¿Quién recibirá el envío?"):
+  // cuando no reconoce el DNI, se llenan nombre, apellidos y celular a mano.
   try {
-    const respuesta = (await cliente.pedir("POST", "/person", {
-      name: nombres,
-      // En Shalom, sur_name es el apellido paterno y last_name el materno.
-      sur_name: paterno,
-      last_name: materno || paterno,
+    await cliente.pedir("POST", "/service-orders/recipients/save", {
       document: d.dni,
-      phone: d.celular.replace(/\D/g, ""),
-      email: correo,
-      birthday: "",
-      address: "",
-      home_reference: "",
-      empresa_id: { id: "", legal_name: "" },
-      ubigeo: "",
-      register: false,
-    })) as Record<string, unknown> | null;
-    if (respuesta && respuesta.valor === false) {
-      return { ok: false, mensaje: `documento: ${d.dni} (${String(respuesta.msn ?? "Shalom no lo registró")})` };
+      first_name: nombres,
+      last_name: paterno,
+      surname: materno || paterno,
+      email: "",
+      phone: celular,
+    });
+    return { ok: true, mensaje: nombreCompleto };
+  } catch (primero) {
+    // Respaldo: el formulario de Clientes.
+    try {
+      const respuesta = (await cliente.pedir("POST", "/person", {
+        name: nombres,
+        // En Clientes, sur_name es el apellido paterno y last_name el materno.
+        sur_name: paterno,
+        last_name: materno || paterno,
+        document: d.dni,
+        phone: celular,
+        email: correo,
+        birthday: "",
+        address: "",
+        home_reference: "",
+        empresa_id: { id: "", legal_name: "" },
+        ubigeo: "",
+        register: false,
+      })) as Record<string, unknown> | null;
+      if (respuesta && respuesta.valor === false) throw new Error(String(respuesta.msn ?? "Shalom no lo registró"));
+      return { ok: true, mensaje: nombreCompleto };
+    } catch {
+      // "documento: N" para que la ventana marque la fila y ofrezca quitarla.
+      const motivo = primero instanceof Error ? primero.message.replace(/^Shalom PRO:\s*/, "") : String(primero);
+      return {
+        ok: false,
+        mensaje: `documento: ${d.dni} (${motivo}${enShalom ? "" : "; Shalom no encontró ese DNI: revisa que esté bien escrito"})`,
+      };
     }
-    return { ok: true, mensaje: `${d.dni}: ${paterno} ${materno}, ${nombres}`.replace(/\s+,/, ",") };
-  } catch (error) {
-    // "documento: N" para que la ventana marque la fila y ofrezca quitarla.
-    const motivo = error instanceof Error ? error.message.replace(/^Shalom PRO:\s*/, "") : String(error);
-    return {
-      ok: false,
-      mensaje: `documento: ${d.dni} (${motivo}${enShalom ? "" : "; Shalom no encontró ese DNI: revisa que esté bien escrito"})`,
-    };
   }
 }
 
