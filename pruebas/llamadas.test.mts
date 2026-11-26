@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { estaCerrado, etiquetaDeEtapa, leadDeLlamada } from "../src/lib/llamadas.ts";
+import { estaCerrado, etiquetaDeEtapa, leadDeLlamada, pedidosQueDuplican } from "../src/lib/llamadas.ts";
 
 test("un lead de Flujos → la fila de llamadas", () => {
   const lead = {
@@ -25,4 +25,10 @@ test("un lead de Flujos → la fila de llamadas", () => {
   assert.equal(estaCerrado("ventas-concretadas"), true);
   assert.equal(estaCerrado("en-seguimiento"), false);
   assert.equal(etiquetaDeEtapa("mensajes-entrantes"), "Mensajes entrantes");
+});
+
+test("no se duplica un pedido del mismo día; uno de otra fecha sí se puede", () => {
+  const pedidos = [{ codigo: "A", fecha_registro: "2026-11-26" }, { codigo: "B", fecha_registro: "2026-10-02" }];
+  assert.deepEqual(pedidosQueDuplican(pedidos, "2026-11-26").map((p) => p.codigo), ["A"]);
+  assert.deepEqual(pedidosQueDuplican(pedidos, "2026-11-27"), []);
 });
