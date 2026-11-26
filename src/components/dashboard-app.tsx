@@ -497,15 +497,19 @@ function Workspace({
               onOpenTareas={() => selectView("Tareas")}
             />
             <AccountMenu email={context.userEmail} puedeCambiarClave={!esAsesora} />
-            <RecordatoriosDeLlamada
-              userId={context.userId}
-              onAbrir={(codigo) => {
-                selectView("Pedidos");
-                setPedidoPorAbrir({ codigo, vez: Date.now() });
-              }}
-            />
           </div>
         </header>
+
+        {/* Fuera del encabezado a propósito: su backdrop-blur hace que un
+            "fixed" adentro se pegue al encabezado y no a la pantalla, y el
+            aviso terminaba arriba tapando el menú de la cuenta. */}
+        <RecordatoriosDeLlamada
+          userId={context.userId}
+          onAbrir={(codigo) => {
+            selectView("Pedidos");
+            setPedidoPorAbrir({ codigo, vez: Date.now() });
+          }}
+        />
 
         {/* La bandeja va a sangre: es una vista de columnas con su propio
             scroll interno, y el ancho máximo con padding la encajonaba. */}
