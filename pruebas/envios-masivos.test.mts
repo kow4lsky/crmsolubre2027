@@ -5,7 +5,7 @@ import test from "node:test";
 import JSZip from "jszip";
 
 import { AGENCIAS_SHALOM } from "../src/lib/agencias-shalom.ts";
-import { cajaShalom, llenarHojaShalom, problemasDeFilaShalom, productosPrincipales, sugerirAgencia } from "../src/lib/envios-masivos.ts";
+import { cajaShalom, documentosRechazadosShalom, llenarHojaShalom, textoDeShalom, problemasDeFilaShalom, productosPrincipales, sugerirAgencia } from "../src/lib/envios-masivos.ts";
 
 test("la caja se decide por los productos principales, sin accesorios", () => {
   assert.equal(productosPrincipales("3xsolubre, 1xcv"), 3);
@@ -114,4 +114,12 @@ test("llena la plantilla real de Olva desde la fila 5, con el DNI como texto", a
   assert.match(f5, /<c r="Y5" s="4" t="inlineStr"><is><t>NO<\/t><\/is><\/c>/); // cargo adjunto: lo de la plantilla
   assert.match(f5, /<c r="AA5"><f>/); // las fórmulas de Olva siguen
   assert.match(/<row r="6"[^>]*>[\s\S]*?<\/row>/.exec(llena)![0], /<c r="B6" s="\d+" t="n" \/>/);
+});
+
+test("lee los DNI que Shalom rechazó", () => {
+  const mensaje =
+    "Shalom PRO: Se detectaron errores en las siguientes filas:<br><br>En la fila 6: documento: 16668407 del destinatario no está registrado.<br>En la fila 8: documento: 45083470 del destinatario no está registrado.<br>";
+  assert.deepEqual(documentosRechazadosShalom(mensaje), ["16668407", "45083470"]);
+  assert.equal(textoDeShalom(mensaje).split("\n").length, 3);
+  assert.doesNotMatch(textoDeShalom(mensaje), /<br>/);
 });

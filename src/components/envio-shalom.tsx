@@ -3,7 +3,7 @@
 import JSZip from "jszip";
 
 import { registrarPedidosEnShalom } from "@/app/actions";
-import { Download, Send } from "lucide-react";
+import { Download, Send, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { BOTON_SECUNDARIO } from "@/components/pedidos-ui";
@@ -11,10 +11,12 @@ import { INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import { AGENCIAS_SHALOM } from "@/lib/agencias-shalom";
 import {
   cajaShalom,
+  documentosRechazadosShalom,
   llenarHojaShalom,
   problemasDeFilaShalom,
   productosPrincipales,
   sugerirAgencia,
+  textoDeShalom,
   type CajaShalom,
   type FilaShalom,
 } from "@/lib/envios-masivos";
@@ -85,6 +87,10 @@ export function EnvioShalom({
   const [errorRegistro, setErrorRegistro] = useState<string | null>(null);
 
   const cambiar = (i: number, cambio: Partial<Fila>) => setFilas((actual) => actual.map((f, j) => (j === i ? { ...f, ...cambio } : f)));
+  const quitar = (id: string) => setFilas((actual) => actual.filter((f) => f.pedido.id !== id));
+  // Los DNI que Shalom no reconoce: si se corrige el DNI, la fila deja de estar marcada.
+  const rechazados = new Set(errorRegistro ? documentosRechazadosShalom(errorRegistro) : []);
+  const filasRechazadas = filas.filter((f) => rechazados.has(f.documento.replace(/\D/g, "")));
 
   const problemas = filas.map((f) => problemasDeFilaShalom(f, AGENCIAS_SHALOM));
   const conProblemas = problemas.filter((p) => p.length > 0).length;
@@ -138,7 +144,7 @@ export function EnvioShalom({
         base64,
         filas.map((f) => f.pedido.id),
       );
-      if (!r.ok) setErrorRegistro(r.error);
+      if (!r.ok) setErrorRegistro(textoDeShalom(r.error));
       else {
         setResultado(r.resultado);
         onRegistrado?.();
@@ -184,10 +190,29 @@ export function EnvioShalom({
               {filas.map((f, i) => {
                 const falta = problemas[i];
                 const dudosa = !!f.destino && !f.segura;
+                const rechazado = rechazados.has(f.documento.replace(/\D/g, ""));
                 return (
-                  <tr key={f.pedido.id} className="border-t border-neutral-100 align-top dark:border-white/5">
+                  <tr
+                    key={f.pedido.id}
+                    className={`border-t border-neutral-100 align-top dark:border-white/5 ${rechazado ? "bg-red-50 dark:bg-red-500/10" : ""}`}
+                  >
                     <td className="p-2">
-                      <b>{f.pedido.codigo}</b>
+                      <span className="flex items-start justify-between gap-2">
+                        <b>{f.pedido.codigo}</b>
+                        <button
+                          type="button"
+                          onClick={() => quitar(f.pedido.id)}
+                          title="Quitar de esta tanda (el pedido no cambia)"
+                          className="cursor-pointer rounded p-0.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-white/10"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </span>
+                      {rechazado && (
+                        <span className="mt-1 block font-semibold text-red-700 dark:text-red-300">
+                          Shalom no reconoce este DNI: corrígelo o quita este pedido.
+                        </span>
+                      )}
                       <span className="block">{f.pedido.cliente}</span>
                       <span className="block text-neutral-500">{f.pedido.pedido}</span>
                       {falta.length > 0 && <span className="mt-1 block font-semibold text-red-700 dark:text-red-300">Falta: {falta.join(", ")}</span>}
@@ -243,7 +268,15 @@ export function EnvioShalom({
           confirman en Shalom al subirlo.
         </p>
         {errorRegistro && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{errorRegistro}</p>
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">
+            <p className="whitespace-pre-line">{errorRegistro}</p>
+            {filasRechazadas.length > 0 && (
+              <p className="mt-2 text-xs">
+                Shalom rechaza toda la tanda si una fila tiene error, así que <b>no se registró ninguno</b>. Corrige los DNI marcados en rojo, o
+                quítalos con el botón de abajo y registra los demás.
+              </p>
+            )}
+          </div>
         )}
         {resultado && (
           <div className="space-y-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-400/30 dark:bg-emerald-400/10">
@@ -278,6 +311,20 @@ export function EnvioShalom({
           <button type="button" onClick={onClose} className={BOTON_SECUNDARIO}>
             Cerrar
           </button>
+          {filasRechazadas.length > 0 && !resultado && (
+            <button
+              type="button"
+              disabled={generando}
+              onClick={() => {
+                const ids = new Set(filasRechazadas.map((f) => f.pedido.id));
+                setFilas((actual) => actual.filter((f) => !ids.has(f.pedido.id)));
+                setErrorRegistro(null);
+              }}
+              className={BOTON_SECUNDARIO}
+            >
+              <X className="size-4" /> Quitar los {filasRechazadas.length} rechazados
+            </button>
+          )}
           <button type="button" disabled={generando || filas.length === 0 || conProblemas > 0} onClick={descargarArchivo} className={BOTON_SECUNDARIO}>
             <Download className="size-4" /> Descargar archivo
           </button>

@@ -300,3 +300,20 @@ export function llenarHojaOlva(hojaXml: string, filas: FilaOlva[]): string {
   });
   return xml;
 }
+
+/**
+ * Los DNI que Shalom rechazó al validar el archivo ("En la fila 6: documento:
+ * 16668407 del destinatario no está registrado").
+ */
+export function documentosRechazadosShalom(mensaje: string): string[] {
+  return [...new Set([...mensaje.matchAll(/documento:?\s*(\d{6,12})/gi)].map((m) => m[1]))];
+}
+
+/** El mensaje de Shalom sin su HTML ("<br>"), para mostrarlo. */
+export function textoDeShalom(mensaje: string): string {
+  return mensaje
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
