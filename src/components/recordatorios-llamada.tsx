@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone, X } from "lucide-react";
+import { Minus, Phone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BOTON_SECUNDARIO } from "@/components/pedidos-ui";
@@ -21,6 +21,8 @@ export function RecordatoriosDeLlamada({ userId, onAbrir }: { userId: string; on
   const supabase = getSupabaseBrowser();
   const [llamadas, setLlamadas] = useState<Llamada[]>([]);
   const [plegado, setPlegado] = useState(false);
+  // Las que se cerraron con la X: no vuelven a salir hasta que llegue otra nueva.
+  const [cerradas, setCerradas] = useState<Set<string>>(new Set());
   const [recarga, setRecarga] = useState(0);
 
   useEffect(() => {
@@ -46,7 +48,9 @@ export function RecordatoriosDeLlamada({ userId, onAbrir }: { userId: string; on
     };
   }, [supabase, userId, recarga]);
 
-  if (!llamadas.length) return null;
+  const visibles = llamadas.filter((l) => !cerradas.has(l.id));
+  if (!visibles.length) return null;
+  const cerrar = () => setCerradas(new Set(llamadas.map((l) => l.id)));
 
   const listo = async (id: string) => {
     setLlamadas((actuales) => actuales.filter((l) => l.id !== id));
@@ -56,36 +60,50 @@ export function RecordatoriosDeLlamada({ userId, onAbrir }: { userId: string; on
 
   if (plegado) {
     return (
-      <button
-        type="button"
-        onClick={() => setPlegado(false)}
-        className="fixed bottom-5 right-5 z-40 inline-flex cursor-pointer items-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-neutral-950 shadow-xl"
-      >
-        <Phone className="size-4" /> {llamadas.length} llamada(s) pendiente(s)
-      </button>
+      <div className="fixed bottom-5 right-5 z-50 inline-flex items-center rounded-full bg-amber-500 text-sm font-semibold text-neutral-950 shadow-xl">
+        <button type="button" onClick={() => setPlegado(false)} className="inline-flex cursor-pointer items-center gap-2 py-3 pl-4 pr-2">
+          <Phone className="size-4" /> {visibles.length} llamada(s) pendiente(s)
+        </button>
+        <button type="button" aria-label="Cerrar" onClick={cerrar} className="cursor-pointer rounded-full p-2 pr-3 hover:bg-amber-600/30">
+          <X className="size-4" />
+        </button>
+      </div>
     );
   }
 
   return (
     <div
       role="alert"
-      className="fixed bottom-5 right-5 z-40 w-[min(380px,calc(100vw-2.5rem))] rounded-2xl border border-amber-300 bg-[#f9f8f3] p-4 shadow-2xl dark:border-amber-400/30 dark:bg-[#1c1811]"
+      // Nunca más alta que la pantalla: el encabezado (con cerrar) siempre a la vista.
+      className="fixed bottom-5 right-5 z-50 flex max-h-[min(28rem,calc(100dvh-2.5rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col rounded-2xl border border-amber-300 bg-[#f9f8f3] p-4 shadow-2xl dark:border-amber-400/30 dark:bg-[#1c1811]"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex shrink-0 items-center justify-between">
         <p className="flex items-center gap-2 font-semibold">
-          <Phone className="size-4 text-amber-600" /> Hora de llamar
+          <Phone className="size-4 text-amber-600" /> Hora de llamar ({visibles.length})
         </p>
-        <button
-          type="button"
-          aria-label="Minimizar"
-          onClick={() => setPlegado(true)}
-          className="cursor-pointer rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10"
-        >
-          <X className="size-4" />
-        </button>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            aria-label="Minimizar"
+            title="Minimizar"
+            onClick={() => setPlegado(true)}
+            className="cursor-pointer rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10"
+          >
+            <Minus className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            title="Cerrar (vuelve a salir si llega otra llamada)"
+            onClick={cerrar}
+            className="cursor-pointer rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       </div>
-      <ul className="mt-3 max-h-72 space-y-2 overflow-auto">
-        {llamadas.map((l) => (
+      <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto">
+        {visibles.map((l) => (
           <li key={l.id} className="rounded-xl bg-white p-3 text-sm dark:bg-white/5">
             <p className="font-semibold">{l.cliente}</p>
             <p className="text-xs text-neutral-500">
