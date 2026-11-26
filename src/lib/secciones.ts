@@ -13,6 +13,7 @@ export const SECCIONES_ASIGNABLES = [
   { nombre: "Pedidos", detalle: "La tabla de pedidos (cada uno ve los que le tocan según su rol)." },
   { nombre: "Pedidos pendientes", detalle: "Las ventas que cerró la IA en Flujos, para programarlas." },
   { nombre: "Autorizaciones", detalle: "Sus pedidos de cambio de estado." },
+  { nombre: "Llamadas", detalle: "Los leads que entraron hoy a Flujos y no se cerraron, para llamarlos y crearles ficha." },
   { nombre: "Analítica", detalle: "Sus números (una asesora ve sólo los suyos; el encargado, los de todas y los de la empresa)." },
   { nombre: "Inventario", detalle: "El stock de los almacenes, lo que salió y lo que tiene que regresar (administrador y encargado)." },
   { nombre: "Resumen", detalle: "Los números del día." },
