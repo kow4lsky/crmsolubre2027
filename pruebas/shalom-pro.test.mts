@@ -62,7 +62,7 @@ test("empareja por DNI y, si se repite, se queda con la orden más nueva", () =>
 /** Un Shalom PRO falso: guarda borradores, exige la cookie y el XSRF. */
 function shalomFalso() {
   const llamadas: string[] = [];
-  let borradores: { id: number; error?: string }[] = [{ id: 1 }]; // uno viejo, que no es de este archivo
+  let borradores: { id: number; error?: string }[] = []; // vacía: Shalom contesta "Aun no ha agregado envios a su lista"
   const sobre = (res: http.ServerResponse, data: unknown, status = 200) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: status < 400, message: status < 400 ? "ok" : "error", data }));
@@ -79,7 +79,11 @@ function shalomFalso() {
       }
       if (!cookie.includes("enviashalom_session=valido")) return sobre(res, null, 401);
       if (req.url === "/api/v1/auth/me") return sobre(res, { email: "x@y" });
-      if (req.url === "/api/v1/service-orders" && req.method === "GET") return sobre(res, borradores);
+      if (req.url === "/api/v1/service-orders" && req.method === "GET") {
+        // Como Shalom: la lista vacía viene como error.
+        if (!borradores.length) return res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ success: false, message: "Aun no ha agregado envios a su lista", data: null }));
+        return sobre(res, borradores);
+      }
       if (req.url === "/api/v1/service-orders/import") {
         assert.match(cuerpo, /envios\.xlsx/);
         borradores = [...borradores, { id: 2 }, { id: 3, error: "Agencia no válida" }, { id: 4 }];
