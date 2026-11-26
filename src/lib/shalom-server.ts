@@ -261,7 +261,11 @@ export async function actualizarEstadosShalom(
     // Si sin fechas no trae nada, se prueba con el rango de seguimiento.
     if (!crudos.length) crudos = await rastreo(conexion.cliente, 60, { from_date: desde, to_date: dayKeyInZone(new Date(), ZONA) });
     const forma = crudos.forma;
-    const envios = crudos.map(leerEnvioShalom);
+    // Lo recién registrado sigue en "Envíos pendientes" hasta que se lleva a la
+    // agencia: también se mira ahí (con su N° de Orden y código).
+    const enPendientes = await pendientes(conexion.cliente).catch(() => []);
+    // Primero los pendientes: si un envío está en las dos listas, manda Rastreo (tiene el estado).
+    const envios = [...enPendientes, ...crudos].map(leerEnvioShalom);
     const porOrden = new Map(envios.filter((e) => e.orden).map((e) => [e.orden, e]));
     const porCodigo = new Map(envios.filter((e) => e.codigo).map((e) => [e.codigo.toUpperCase(), e]));
 
@@ -298,7 +302,7 @@ export async function actualizarEstadosShalom(
     const porEstado = new Map<string, number>();
     for (const e of envios) porEstado.set(etiquetaShalom(e.estado), (porEstado.get(etiquetaShalom(e.estado)) ?? 0) + 1);
     const resumen =
-      `Shalom tiene ${envios.length} envío(s) en Rastreo` +
+      `Shalom tiene ${crudos.length} envío(s) en Rastreo y ${enPendientes.length} en Envíos pendientes` +
       (porEstado.size ? ` (${[...porEstado].map(([estado, n]) => `${estado.toLowerCase()}: ${n}`).join(", ")})` : "") +
       `; ${emparejados} de ${pedidos.length} pedidos del CRM se encontraron ahí.` +
       (envios.length ? "" : ` Respuesta de Shalom: ${forma.slice(0, 300)}`);
