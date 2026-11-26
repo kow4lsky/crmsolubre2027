@@ -4308,7 +4308,7 @@ export async function actualizarShalomAhora(): Promise<{ ok: true; mensaje: stri
   const conectado = sesion.cuenta ? `Conectado a Shalom PRO (${sesion.cuenta}). ` : "Conectado a Shalom PRO. ";
   const r = await actualizarEstadosShalom(getSupabaseAdmin(), true);
   if (!r.ok) return { ok: false, error: `${conectado}Pero al traer los estados: ${r.error}` };
-  return { ok: true, mensaje: `${conectado}${r.actualizados} de ${r.revisados} envíos en camino cambiaron de estado.` };
+  return { ok: true, mensaje: `${conectado}${r.actualizados} de ${r.revisados} envíos en camino cambiaron de estado.${r.resumen ? ` ${r.resumen}` : ""}` };
 }
 
 /**

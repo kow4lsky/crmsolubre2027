@@ -27,10 +27,14 @@ function texto(valor: unknown): string {
   return valor === null || valor === undefined ? "" : String(valor).trim();
 }
 
+/** El primer valor con texto. Una clave puede ir con punto: "receiver.document". */
 function primero(item: Record<string, unknown>, claves: string[]): string {
   for (const clave of claves) {
-    const valor = texto(item[clave]);
-    if (valor) return valor;
+    let valor: unknown = item;
+    for (const parte of clave.split(".")) valor = valor && typeof valor === "object" ? (valor as Record<string, unknown>)[parte] : undefined;
+    if (valor && typeof valor === "object") continue;
+    const limpio = texto(valor);
+    if (limpio) return limpio;
   }
   return "";
 }
@@ -45,10 +49,26 @@ export function leerEnvioShalom(item: Record<string, unknown>): EnvioShalom {
   return {
     orden: primero(item, ["service_order_id_empresarial", "serviceOrderIdEmpresarial", "order_number", "numero_orden", "ose_id"]),
     codigo: primero(item, ["code_service_order_empresarial", "codeServiceOrderEmpresarial", "code", "codigo"]),
-    dni: primero(item, ["recipient_dni", "document_number", "doc_consignatario", "receiver_document"]).replace(/\D/g, ""),
+    // En Rastreo e Historial el DNI viene adentro del destinatario.
+    dni: primero(item, [
+      "receiver.document",
+      "receiver_person.document",
+      "recipient_dni",
+      "document_number",
+      "doc_consignatario",
+      "receiver_document",
+    ]).replace(/\D/g, ""),
     estado: primero(item, ["status", "shipping_status"]).toLowerCase() || "en_origen",
-    costo: numero(primero(item, ["price", "total", "amount", "precio", "monto"])),
-    destino: primero(item, ["destination", "destino", "ter_nombre"]),
+    costo: numero(primero(item, ["price", "total", "amount", "precio", "monto", "detail_service.0.type_product.value"])),
+    destino: primero(item, [
+      "destination.name",
+      "destination.ter_nombre",
+      "destination_station.name",
+      "destination_station.ter_nombre",
+      "destination",
+      "destino",
+      "ter_nombre",
+    ]),
   };
 }
 

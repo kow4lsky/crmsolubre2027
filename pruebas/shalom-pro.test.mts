@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
 
-import { ClienteShalomPro, SesionVencida, historial, registrarMasivo } from "../src/lib/shalom-pro.ts";
+import { ClienteShalomPro, SesionVencida, historial, rastreo, registrarMasivo } from "../src/lib/shalom-pro.ts";
 import {
   cookieDeSesion,
   emparejarPorDni,
@@ -87,6 +87,14 @@ function shalomFalso() {
       }
       if (req.url === "/api/v1/service-orders/security-code/massive") return sobre(res, JSON.parse(cuerpo));
       if (req.url === "/api/v1/service-orders/send") return sobre(res, JSON.parse(cuerpo));
+      if (req.url?.startsWith("/api/v1/service-orders/shipments/tracking")) {
+        const pagina = Number(new URL(req.url, "http://x").searchParams.get("page"));
+        return sobre(res, {
+          items: [{ serviceOrderIdEmpresarial: 105149320 + pagina, code: "3WND", receiver: { type: "person", document: "0264523" + pagina }, status: pagina === 1 ? "en_destino" : "en_transito", price: "12.00", destination: { name: "PIURA" } }],
+          summary: { en_destino: 1 },
+          meta: { current_page: pagina, last_page: 2 },
+        });
+      }
       if (req.url?.startsWith("/api/v1/service-orders/shipments/history")) {
         const pagina = Number(new URL(req.url, "http://x").searchParams.get("page"));
         return sobre(res, { current_page: pagina, last_page: 2, data: [{ order_number: `10${pagina}`, code: "AB", recipient_dni: "4841993" + pagina, status: "en_transito" }] });
@@ -109,6 +117,9 @@ test("registro masivo: sube, pone la clave sólo a los nuevos sin error y los en
     assert.deepEqual(r.conError.map((b) => b.id), [3]);
     const clave = llamadas.find((l) => l.includes("security-code"));
     assert.ok(clave?.endsWith("tok=1"), "manda el XSRF decodificado");
+    const conEstado = (await rastreo(cliente)).map(leerEnvioShalom);
+    assert.deepEqual(conEstado[0], { orden: "105149321", codigo: "3WND", dni: "02645231", estado: "en_destino", costo: 12, destino: "PIURA" });
+    assert.equal(conEstado.length, 2);
     const envios = await historial(cliente, "2026-11-24", "2026-11-25");
     assert.deepEqual(envios.map((e) => e.order_number), ["101", "102"]);
   } finally {

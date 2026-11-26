@@ -189,6 +189,22 @@ export async function historial(cliente: ClienteShalomPro, desde: string, hasta:
   return todos;
 }
 
+/**
+ * Los envíos con su estado (en origen, en tránsito, en destino…), como la
+ * pantalla "Rastreo" de Shalom PRO. El historial no trae el estado: sólo esta.
+ */
+export async function rastreo(cliente: ClienteShalomPro, paginasMaximas = 40) {
+  const todos: Record<string, unknown>[] = [];
+  for (let pagina = 1; pagina <= paginasMaximas; pagina++) {
+    const params = new URLSearchParams({ page: String(pagina), per_page: "100", order_by: "desc" });
+    const respuesta = await cliente.pedir("GET", `/service-orders/shipments/tracking?${params}`);
+    const items = lista(respuesta);
+    todos.push(...items);
+    if (!items.length || !hayOtraPagina(respuesta)) break;
+  }
+  return todos;
+}
+
 /** Los envíos registrados que esperan que se lleven a la agencia. */
 export async function pendientes(cliente: ClienteShalomPro) {
   return lista(await cliente.pedir("GET", "/service-orders/shipments/pending-approval"));

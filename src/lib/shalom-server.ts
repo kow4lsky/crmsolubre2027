@@ -16,7 +16,7 @@ import {
   trackingShalom,
   type EnvioShalom,
 } from "@/lib/shalom-envios";
-import { ClienteShalomPro, SesionVencida, historial, pendientes, registrarMasivo } from "@/lib/shalom-pro";
+import { ClienteShalomPro, SesionVencida, historial, pendientes, rastreo, registrarMasivo } from "@/lib/shalom-pro";
 
 const ZONA = "America/Lima";
 /** Los estados de Shalom se consultan cada 12 horas. */
@@ -157,7 +157,11 @@ export async function registrarEnShalom(
 
     // Lo recién enviado aparece en "envíos pendientes" y en el historial de hoy.
     const hoy = dayKeyInZone(new Date(), ZONA);
-    const envios = [...(await pendientes(conexion.cliente)), ...(await historial(conexion.cliente, hace(1), hoy, 5))].map(leerEnvioShalom);
+    const envios = [
+      ...(await pendientes(conexion.cliente)),
+      ...(await rastreo(conexion.cliente, 2)),
+      ...(await historial(conexion.cliente, hace(1), hoy, 5)),
+    ].map(leerEnvioShalom);
     const pares = emparejarPorDni(pedidos, envios);
 
     const registrados: ResultadoShalom["registrados"] = [];
@@ -191,7 +195,7 @@ export async function registrarEnShalom(
 export async function actualizarEstadosShalom(
   supabase: SupabaseClient,
   forzar = false,
-): Promise<{ ok: true; omitido?: string; revisados: number; actualizados: number } | { ok: false; error: string }> {
+): Promise<{ ok: true; omitido?: string; revisados: number; actualizados: number; resumen?: string } | { ok: false; error: string }> {
   const conexion = await cliente();
   if (!conexion.ok) return { ok: true, omitido: "sin conexión", revisados: 0, actualizados: 0 };
 
@@ -221,31 +225,39 @@ export async function actualizarEstadosShalom(
     }
 
     await conexion.cliente.abrir();
-    const envios = (await historial(conexion.cliente, desde, dayKeyInZone(new Date(), ZONA))).map(leerEnvioShalom);
+    // El estado sólo viene en "Rastreo" (el historial no lo trae).
+    const envios = (await rastreo(conexion.cliente)).map(leerEnvioShalom);
     const porOrden = new Map(envios.filter((e) => e.orden).map((e) => [e.orden, e]));
 
-    // Primero por N° de orden (el tracking); los que no tienen, por DNI.
-    const sinOrden = pedidos.filter((p) => !ordenDelTracking(p.tracking));
-    const porDni = emparejarPorDni(sinOrden, envios);
+    // Primero por N° de orden (el tracking); si no aparece, por DNI.
+    const porDni = emparejarPorDni(pedidos, envios);
 
     let actualizados = 0;
+    let emparejados = 0;
     for (const pedido of pedidos) {
-      const orden = ordenDelTracking(pedido.tracking);
-      const envio = orden ? porOrden.get(orden) : porDni.get(pedido.id);
+      const ordenGuardada = ordenDelTracking(pedido.tracking);
+      const envio = (ordenGuardada ? porOrden.get(ordenGuardada) : undefined) ?? porDni.get(pedido.id);
       if (!envio) continue;
+      emparejados += 1;
+      const orden = ordenGuardada && porOrden.has(ordenGuardada) ? ordenGuardada : null;
       const cambiaEstado = estadoCrmDesdeShalom(envio.estado, pedido.estado);
       if (!cambiaEstado && pedido.estado_shalom === etiquetaShalom(envio.estado) && orden) continue;
       await anotar(supabase, pedido, envio, orden ? null : conexion.clave);
       actualizados += 1;
     }
     await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom");
-    if (actualizados) {
-      await anotarConexion(supabase, "SHALOM", `Estados de Shalom: ${actualizados} de ${pedidos.length} envíos en camino cambiaron.`, {
-        nivel: "info",
-        workspaceId: workspace.id,
-      });
-    }
-    return { ok: true, revisados: pedidos.length, actualizados };
+    // Un resumen para entender qué devolvió Shalom (sin datos de clientes).
+    const porEstado = new Map<string, number>();
+    for (const e of envios) porEstado.set(etiquetaShalom(e.estado), (porEstado.get(etiquetaShalom(e.estado)) ?? 0) + 1);
+    const resumen =
+      `Shalom tiene ${envios.length} envío(s) en Rastreo` +
+      (porEstado.size ? ` (${[...porEstado].map(([estado, n]) => `${estado.toLowerCase()}: ${n}`).join(", ")})` : "") +
+      `; ${emparejados} de ${pedidos.length} pedidos del CRM se encontraron ahí.`;
+    await anotarConexion(supabase, "SHALOM", `Estados de Shalom: ${actualizados} cambiaron. ${resumen}`, {
+      nivel: emparejados < pedidos.length ? "aviso" : "info",
+      workspaceId: workspace.id,
+    });
+    return { ok: true, revisados: pedidos.length, actualizados, resumen };
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error);
     console.error("[shalom]", mensaje);
