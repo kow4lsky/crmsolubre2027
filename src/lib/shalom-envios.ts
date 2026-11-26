@@ -47,7 +47,9 @@ function numero(valor: string): number | null {
 /** Un envío como lo devuelve Shalom PRO → lo que usa el CRM. */
 export function leerEnvioShalom(item: Record<string, unknown>): EnvioShalom {
   return {
-    orden: primero(item, ["service_order_id_empresarial", "serviceOrderIdEmpresarial", "order_number", "numero_orden", "ose_id"]),
+    // El "N° de Orden" que muestra Shalom PRO es la guía (guideNumber), no el
+    // id interno de la orden (serviceOrderIdEmpresarial).
+    orden: primero(item, ["service_order_guia_empresarial", "guideNumber", "guide_number", "order_number", "numero_orden"]),
     codigo: primero(item, ["code_service_order_empresarial", "codeServiceOrderEmpresarial", "code", "codigo"]),
     // En Rastreo e Historial el DNI viene adentro del destinatario.
     dni: primero(item, [

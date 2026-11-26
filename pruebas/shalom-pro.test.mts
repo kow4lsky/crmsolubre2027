@@ -26,7 +26,7 @@ test("lee la cookie de sesión como venga pegada", () => {
 });
 
 test("traduce un envío de Shalom y su estado", () => {
-  const e = leerEnvioShalom({ service_order_id_empresarial: 103397868, code_service_order_empresarial: "3PCT", recipient_dni: "48419937", status: "en_destino", price: "12.00" });
+  const e = leerEnvioShalom({ service_order_id_empresarial: 9999, service_order_guia_empresarial: 103397868, code_service_order_empresarial: "3PCT", recipient_dni: "48419937", status: "en_destino", price: "12.00" });
   assert.deepEqual(e, { orden: "103397868", codigo: "3PCT", dni: "48419937", estado: "en_destino", costo: 12, destino: "" });
   assert.equal(trackingShalom(e), "103397868 - 3PCT");
   assert.equal(ordenDelTracking("103397868 - 3PCT"), "103397868");
@@ -94,7 +94,7 @@ function shalomFalso() {
       if (req.url?.startsWith("/api/v1/service-orders/shipments/tracking")) {
         const pagina = Number(new URL(req.url, "http://x").searchParams.get("page"));
         return sobre(res, {
-          items: [{ serviceOrderIdEmpresarial: 105149320 + pagina, code: "3WND", receiver: { type: "person", document: "0264523" + pagina }, status: pagina === 1 ? "en_destino" : "en_transito", price: "12.00", destination: { name: "PIURA" } }],
+          items: [{ serviceOrderIdEmpresarial: 108983847, guideNumber: 105149320 + pagina, code: "3WND", receiver: { type: "person", document: "0264523" + pagina }, status: pagina === 1 ? "en_destino" : "en_transito", price: "12.00", destination: { name: "PIURA" } }],
           summary: { en_destino: 1 },
           meta: { current_page: pagina, last_page: 2 },
         });

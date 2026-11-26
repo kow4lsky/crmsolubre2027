@@ -62,9 +62,9 @@ function hace(dias: number, desde = new Date()) {
 }
 
 /** Escribe en el pedido lo que dice Shalom: tracking, clave, costo, estado del courier y, si avanzó, el estado. */
-async function anotar(supabase: SupabaseClient, pedido: PedidoShalom, envio: EnvioShalom, clave: string | null) {
+async function anotar(supabase: SupabaseClient, pedido: PedidoShalom, envio: EnvioShalom, clave: string | null, corregirTracking = false) {
   const cambios: Record<string, unknown> = { estado_shalom: etiquetaShalom(envio.estado) };
-  if (!ordenDelTracking(pedido.tracking)) cambios.tracking = trackingShalom(envio);
+  if (!ordenDelTracking(pedido.tracking) || corregirTracking) cambios.tracking = trackingShalom(envio);
   if (clave) cambios.clave = clave;
   if (envio.costo !== null) cambios.costo_envio = envio.costo;
   const nuevo = estadoCrmDesdeShalom(envio.estado, pedido.estado);
@@ -284,10 +284,13 @@ export async function actualizarEstadosShalom(
       if (!envio) continue;
       emparejados += 1;
       const orden = ordenGuardada;
+      // Mismo código pero otro N° de orden: el tracking se anotó con el id
+      // interno de Shalom en vez de su N° de Orden. Se corrige.
+      const corregir = !!envio.orden && !!ordenGuardada && ordenGuardada !== envio.orden && codigoGuardado === envio.codigo.toUpperCase();
       const cambiaEstado = estadoCrmDesdeShalom(envio.estado, pedido.estado);
-      if (!cambiaEstado && pedido.estado_shalom === etiquetaShalom(envio.estado) && orden) continue;
+      if (!cambiaEstado && !corregir && pedido.estado_shalom === etiquetaShalom(envio.estado) && orden) continue;
       // Traer estados nunca toca la clave: es la que se puso al registrar.
-      await anotar(supabase, pedido, envio, null);
+      await anotar(supabase, pedido, envio, null, corregir);
       actualizados += 1;
     }
     await supabase.from("sincronizaciones").update({ ultimo_error: null }).eq("clave", "shalom");
