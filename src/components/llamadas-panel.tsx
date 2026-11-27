@@ -167,7 +167,7 @@ export function LlamadasPanel({
 
   const traerDeFlujos = async () => {
     setTrayendo(true);
-    const r = await actualizarLlamadas();
+    const r = await actualizarLlamadas(dia);
     setTrayendo(false);
     if (!r.ok) return setError(r.error);
     onNotice(r.mensaje);

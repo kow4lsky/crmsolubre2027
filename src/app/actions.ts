@@ -4278,15 +4278,16 @@ export async function registrarPedidosEnShalom(
 }
 
 /** "Actualizar" en Llamadas: trae ya de Flujos los leads de hoy. */
-export async function actualizarLlamadas(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+export async function actualizarLlamadas(dia?: string): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
   const scope = await requireWorkspace();
   if (!scope.ok) return { ok: false, error: scope.error };
   try {
     const { sincronizarLlamadas } = await import("@/lib/flujos-server");
-    const r = await sincronizarLlamadas(getSupabaseAdmin(), true);
-    if (!r.ok) return { ok: false, error: `No se pudo consultar Flujos: ${r.error}` };
+    const valido = dia && /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : undefined;
+    const r = await sincronizarLlamadas(getSupabaseAdmin(), true, valido);
+    if (!r.ok) return { ok: false, error: r.error.startsWith("Flujos llegó") ? r.error : `No se pudo consultar Flujos: ${r.error}` };
     if (r.omitido === "sin conexión") return { ok: false, error: "Falta conectar Flujos en Configuración → Conexiones." };
-    return { ok: true, mensaje: `Flujos al día: ${r.revisados} lead(s) de hoy.` };
+    return { ok: true, mensaje: `Flujos al día: ${r.revisados} lead(s)${valido ? ` del ${valido}` : " nuevos"}.` };
   } catch (error) {
     return { ok: false, error: `No se pudo consultar Flujos: ${error instanceof Error ? error.message : String(error)}` };
   }
