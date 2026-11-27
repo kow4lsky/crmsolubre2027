@@ -86,5 +86,12 @@ export const LLAMADAS = [
   { valor: "PRIMERA", texto: "1ra llamada" },
   { valor: "SEGUNDA", texto: "2da llamada" },
   { valor: "NC", texto: "NC" },
+  { valor: "COORDINACION", texto: "Coordinación" },
+  { valor: "CONFIRMADO", texto: "Confirmado" },
 ] as const;
+
+/** Los pedidos de ese celular que son del día del lead o después: crear otro sería duplicarlo. */
+export function pedidosQueDuplican<P extends { fecha_registro: string | null }>(pedidos: P[], dia: string): P[] {
+  return pedidos.filter((p) => (p.fecha_registro ?? "") >= dia);
+}
 export type Llamada = (typeof LLAMADAS)[number]["valor"];

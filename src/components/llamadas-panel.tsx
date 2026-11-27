@@ -1,14 +1,14 @@
 "use client";
 
-import { MessageCircle, Phone, PhoneCall, Plus, RefreshCw, Search } from "lucide-react";
+import { Copy, ExternalLink, MessageCircle, Phone, PhoneCall, Plus, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { actualizarLlamadas } from "@/app/actions";
 import { PedidoForm } from "@/components/pedido-form";
 import { BOTON_SECUNDARIO, EstadoChip } from "@/components/pedidos-ui";
-import { Card, INPUT_CLASS } from "@/components/ui";
+import { Card, INPUT_CLASS, Modal, PRIMARY_BUTTON_CLASS } from "@/components/ui";
 import { dayKeyInZone } from "@/lib/fechas";
-import { LLAMADAS, estaCerrado, etiquetaDeEtapa, type Llamada } from "@/lib/llamadas";
+import { LLAMADAS, estaCerrado, etiquetaDeEtapa, pedidosQueDuplican, type Llamada } from "@/lib/llamadas";
 import type { Pedido, PedidoItem, RolVenta } from "@/lib/pedidos";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
@@ -28,7 +28,23 @@ type Fila = {
   pedido_codigo: string | null;
   pedido_estado: string | null;
   pedido_asesor: string | null;
+  anterior_codigo: string | null;
+  anterior_fecha: string | null;
 };
+
+type PedidoDelCelular = { id: string; codigo: string; fecha_registro: string | null; estado: string; asesor: string | null; pedido: string | null };
+
+/** Dónde se abre Flujos (cada persona lo configura una vez en su navegador). */
+const ENLACE_FLUJOS = "crm-solubre:enlace-flujos";
+const ENLACE_POR_DEFECTO = "https://app.flujosinteligentes.com";
+
+function leerEnlaceFlujos(): string {
+  try {
+    return window.localStorage.getItem(ENLACE_FLUJOS) || ENLACE_POR_DEFECTO;
+  } catch {
+    return ENLACE_POR_DEFECTO;
+  }
+}
 
 type Filtro = "pendientes" | "todos";
 
@@ -39,6 +55,8 @@ const COLOR_LLAMADA: Record<Llamada, string> = {
   PRIMERA: "border-sky-500 bg-sky-500 text-white",
   SEGUNDA: "border-violet-500 bg-violet-500 text-white",
   NC: "border-red-500 bg-red-500 text-white",
+  COORDINACION: "border-cyan-600 bg-cyan-600 text-white",
+  CONFIRMADO: "border-emerald-600 bg-emerald-600 text-white",
 };
 
 /**
@@ -66,6 +84,63 @@ export function LlamadasPanel({
   const [recarga, setRecarga] = useState(0);
   const [trayendo, setTrayendo] = useState(false);
   const [ficha, setFicha] = useState<Fila | null>(null);
+  const [duplicado, setDuplicado] = useState<{ fila: Fila; pedidos: PedidoDelCelular[] } | null>(null);
+  const [revisando, setRevisando] = useState<string | null>(null);
+
+  /** Antes de crear la ficha: que ese celular no tenga ya un pedido de este día (de cualquier asesora). */
+  const crearFicha = async (f: Fila) => {
+    if (!f.celular) return setFicha(f);
+    setRevisando(f.lead_id);
+    const { data, error: falla } = await supabase.rpc("pedidos_del_celular", { ws: workspaceId, cel: f.celular });
+    setRevisando(null);
+    if (falla) return setError(/pedidos_del_celular|does not exist/.test(falla.message) ? "Falta correr el SQL nuevo de Llamadas (202612140001_llamadas_coordinacion.sql)." : falla.message);
+    const pedidos = (data ?? []) as PedidoDelCelular[];
+    const mismos = pedidosQueDuplican(pedidos, dia);
+    if (mismos.length) return setDuplicado({ fila: f, pedidos: mismos });
+    if (pedidos[0]) onNotice(`Ya es cliente: compró antes (${pedidos[0].codigo}, ${pedidos[0].fecha_registro}). Se crea un pedido nuevo.`);
+    setFicha(f);
+  };
+
+  const enlazar = async (f: Fila, pedido: PedidoDelCelular) => {
+    const { error: falla } = await supabase.rpc("enlazar_llamada", { ws: workspaceId, lead: f.lead_id, pedido: pedido.id });
+    setDuplicado(null);
+    if (falla) return setError(falla.message);
+    onNotice(`Lead enlazado al pedido ${pedido.codigo}.`);
+    setRecarga((n) => n + 1);
+  };
+
+  const copiar = async (celular: string) => {
+    try {
+      await navigator.clipboard.writeText(celular);
+      onNotice(`Copiado: ${celular}`);
+    } catch {
+      onNotice("No se pudo copiar solo: selecciona el número y cópialo con Ctrl + C.");
+    }
+  };
+
+  /** Copia el celular y abre Flujos para buscar el chat. */
+  const buscarEnFlujos = async (f: Fila) => {
+    if (f.celular) await copiar(f.celular);
+    const enlace = leerEnlaceFlujos()
+      .replace("{lead}", encodeURIComponent(f.lead_id))
+      .replace("{celular}", encodeURIComponent(f.celular ?? ""));
+    window.open(enlace, "flujos");
+  };
+
+  const configurarFlujos = () => {
+    const actual = leerEnlaceFlujos();
+    const nuevo = window.prompt(
+      "Pega la dirección de Flujos donde buscas los chats (cópiala de la barra del navegador). Si en la dirección va el id del lead, escribe {lead} en su lugar.",
+      actual,
+    );
+    if (nuevo === null) return;
+    try {
+      window.localStorage.setItem(ENLACE_FLUJOS, nuevo.trim() || ENLACE_POR_DEFECTO);
+      onNotice("Enlace de Flujos guardado.");
+    } catch {
+      onNotice("No se pudo guardar en este navegador.");
+    }
+  };
 
   useEffect(() => {
     let vigente = true;
@@ -92,7 +167,7 @@ export function LlamadasPanel({
 
   const traerDeFlujos = async () => {
     setTrayendo(true);
-    const r = await actualizarLlamadas();
+    const r = await actualizarLlamadas(dia);
     setTrayendo(false);
     if (!r.ok) return setError(r.error);
     onNotice(r.mensaje);
@@ -139,12 +214,14 @@ export function LlamadasPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         <Contador titulo="Por llamar" valor={pendientes.filter((f) => !f.llamada).length} tono="amber" />
         <Contador titulo="1ra llamada" valor={pendientes.filter((f) => f.llamada === "PRIMERA").length} tono="sky" />
         <Contador titulo="2da llamada" valor={pendientes.filter((f) => f.llamada === "SEGUNDA").length} tono="violet" />
         <Contador titulo="NC" valor={pendientes.filter((f) => f.llamada === "NC").length} tono="red" />
-        <Contador titulo="Ya en la base" valor={cuenta(cerrado)} tono="emerald" />
+        <Contador titulo="Coordinación" valor={pendientes.filter((f) => f.llamada === "COORDINACION").length} tono="cyan" />
+        <Contador titulo="Confirmado" valor={pendientes.filter((f) => f.llamada === "CONFIRMADO").length} tono="emerald" />
+        <Contador titulo="Ya en la base" valor={cuenta(cerrado)} tono="sky" />
       </div>
 
       <Card className="p-3">
@@ -199,13 +276,23 @@ export function LlamadasPanel({
                     <td className="whitespace-nowrap px-2 py-2 text-xs text-neutral-500">
                       {f.creado_en ? new Date(f.creado_en).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: timezone }) : "—"}
                     </td>
-                    <td className="px-2 py-2 font-semibold">{f.nombre}</td>
+                    <td className="px-2 py-2 font-semibold">
+                      {f.nombre}
+                      {f.anterior_codigo && (
+                        <span className="block text-[10px] font-normal text-emerald-700 dark:text-emerald-300">
+                          Ya es cliente · {f.anterior_codigo} ({f.anterior_fecha})
+                        </span>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-2 py-2">
                       {f.celular ? (
                         <span className="flex items-center gap-2">
                           <a href={`tel:${f.celular}`} className="font-mono underline" title="Llamar">
                             {f.celular}
                           </a>
+                          <button type="button" onClick={() => void copiar(f.celular ?? "")} title="Copiar celular" className="cursor-pointer text-neutral-500 hover:text-neutral-800 dark:hover:text-white">
+                            <Copy className="size-4" />
+                          </button>
                           <a href={`https://wa.me/51${f.celular}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp" className="text-emerald-600">
                             <MessageCircle className="size-4" />
                           </a>
@@ -213,6 +300,14 @@ export function LlamadasPanel({
                       ) : (
                         <span className="text-xs text-neutral-400">sin celular</span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => void buscarEnFlujos(f)}
+                        title="Copia el celular y abre Flujos para buscar su chat"
+                        className="mt-1 inline-flex cursor-pointer items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200 dark:bg-violet-400/15 dark:text-violet-200"
+                      >
+                        <ExternalLink className="size-3" /> Buscar en Flujos
+                      </button>
                     </td>
                     <td className="px-2 py-2 text-xs font-medium">{f.producto ?? "—"}</td>
                     <td className="px-2 py-2">
@@ -256,8 +351,13 @@ export function LlamadasPanel({
                           {f.pedido_asesor && <span className="text-neutral-500">{f.pedido_asesor}</span>}
                         </span>
                       ) : (
-                        <button type="button" onClick={() => setFicha(f)} className={`${BOTON_SECUNDARIO} px-2.5 py-1 text-xs`}>
-                          <Plus className="size-3.5" /> Crear ficha
+                        <button
+                          type="button"
+                          disabled={revisando === f.lead_id}
+                          onClick={() => void crearFicha(f)}
+                          className={`${BOTON_SECUNDARIO} px-2.5 py-1 text-xs`}
+                        >
+                          <Plus className="size-3.5" /> {revisando === f.lead_id ? "Revisando…" : "Crear ficha"}
                         </button>
                       )}
                     </td>
@@ -269,9 +369,42 @@ export function LlamadasPanel({
         )}
         <p className="mt-3 flex items-center gap-1 text-xs text-neutral-500">
           <Phone className="size-3.5" /> Los leads se traen de Flujos cada 5 minutos. &quot;Sin cerrar&quot; oculta los que ya se vendieron en Flujos o ya
-          tienen un pedido en la base (por su celular).
+          tienen un pedido en la base (por su celular).{" "}
+          <button type="button" onClick={configurarFlujos} className="cursor-pointer underline">
+            Configurar &quot;Buscar en Flujos&quot;
+          </button>
         </p>
       </Card>
+
+      {duplicado && (
+        <Modal title="Ese cliente ya tiene un pedido" onClose={() => setDuplicado(null)} ancho="max-w-lg">
+          <p className="mt-3 text-sm">
+            El celular <b>{duplicado.fila.celular}</b> ya tiene {duplicado.pedidos.length === 1 ? "un pedido" : "pedidos"} de este día. Para no
+            duplicarlo, no se crea otro: enlaza el lead al que ya existe.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {duplicado.pedidos.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f9f8f3] p-3 text-sm dark:bg-white/5">
+                <span>
+                  <b className="font-mono">{p.codigo}</b> · {p.fecha_registro} · {p.asesor ?? "—"}
+                  <span className="block text-xs text-neutral-500">{p.pedido}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <EstadoChip estado={p.estado} />
+                  <button type="button" onClick={() => void enlazar(duplicado.fila, p)} className={PRIMARY_BUTTON_CLASS}>
+                    Enlazar
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex justify-end">
+            <button type="button" onClick={() => setDuplicado(null)} className={BOTON_SECUNDARIO}>
+              Cancelar
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {ficha && (
         <PedidoForm
@@ -311,6 +444,7 @@ const TONOS = {
   violet: "before:bg-violet-500",
   red: "before:bg-red-500",
   emerald: "before:bg-emerald-500",
+  cyan: "before:bg-cyan-600",
 } as const;
 
 function Contador({ titulo, valor, tono }: { titulo: string; valor: number; tono: keyof typeof TONOS }) {
