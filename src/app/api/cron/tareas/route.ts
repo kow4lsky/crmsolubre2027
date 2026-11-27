@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { actualizarFlujosDiario, sincronizarFlujos, sincronizarLlamadas } from "@/lib/flujos-server";
 import { actualizarEstadosShalom, mantenerSesionShalom } from "@/lib/shalom-server";
+import { actualizarEstadosSwayp } from "@/lib/swayp-server";
 import { avisarLlamadas } from "@/lib/llamadas-server";
 import { avisarTareasVencidas } from "@/lib/tareas-server";
 import { verifyZernioToken } from "@/lib/zernio";
@@ -59,7 +60,8 @@ async function correr(request: NextRequest) {
   // Los leads del día para la Analítica, cada hora.
   // Y el estado de los envíos de Shalom, cada 12 horas (y su sesión, viva cada 20 minutos).
   // Y los leads del día para Llamadas, cada 5 minutos.
-  const [tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia] = await Promise.all([
+  // Y los estados de Swayp a las 9 a. m. y a las 4 p. m.
+  const [tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia, swayp] = await Promise.all([
     avisarTareasVencidas(supabase),
     avisarLlamadas(supabase),
     sincronizarFlujos(supabase),
@@ -67,9 +69,10 @@ async function correr(request: NextRequest) {
     actualizarEstadosShalom(supabase),
     mantenerSesionShalom(supabase),
     sincronizarLlamadas(supabase),
+    actualizarEstadosSwayp(supabase),
   ]);
 
-  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia }));
+  console.log("[cron] vuelta:", JSON.stringify({ tareas, llamadas, flujos, flujosDiario, shalom, shalomSesion, leadsDelDia, swayp }));
 
   return NextResponse.json({ ok: true, tareas, llamadas, flujos, flujosDiario, shalom });
 }

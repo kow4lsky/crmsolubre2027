@@ -72,3 +72,54 @@ export function estadoDelCrm(codigoSwayp: string, estadoActual: string): string 
       return null;
   }
 }
+
+/* --------------------------------------------- guías listadas por fecha */
+
+export type GuiaSwayp = {
+  guia: string;
+  codigo: string;
+  estado: string;
+  /** El código del CRM ("WED236100") si la guía se creó con él (columna id). */
+  idExterno: string;
+  celular: string;
+  costo: number | null;
+  recaudo: number | null;
+};
+
+function valor(item: Record<string, unknown>, claves: string[]): string {
+  for (const clave of claves) {
+    const v = item[clave];
+    if (v !== null && v !== undefined && typeof v !== "object" && String(v).trim()) return String(v).trim();
+  }
+  // Un nivel adentro (fullData puede traer el detalle anidado).
+  for (const v of Object.values(item)) {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const adentro = valor(v as Record<string, unknown>, claves);
+      if (adentro) return adentro;
+    }
+  }
+  return "";
+}
+
+const aNumero = (texto: string) => {
+  const n = Number(texto.replace(/[^\d.-]/g, ""));
+  return texto && Number.isFinite(n) ? n : null;
+};
+
+/** Una guía de POST /v2/guias/dates → lo que usa el CRM. */
+export function leerGuiaSwayp(item: Record<string, unknown>): GuiaSwayp {
+  const telefono = valor(item, ["telefonoDestinatario", "telefono_destinatario", "telefono", "phone"]).replace(/\D/g, "");
+  let codigo = valor(item, ["idEstado", "id_estado", "status_code", "estadoId", "codigoEstado"]);
+  const nombre = valor(item, ["estado", "status", "nombreEstado", "estadoNombre"]);
+  if (!codigo && /^\d+$/.test(nombre)) codigo = nombre;
+  if (!codigo) codigo = Object.entries(ESTADOS_SWAYP).find(([, n]) => n.toLowerCase() === nombre.toLowerCase())?.[0] ?? "";
+  return {
+    guia: valor(item, ["guia", "numeroGuia", "numero_guia", "guide", "guide_number", "order_number"]),
+    codigo,
+    estado: ESTADOS_SWAYP[codigo] ?? nombre,
+    idExterno: valor(item, ["id", "idExterno", "id_externo", "idPedido", "referencia", "orderId"]).toUpperCase(),
+    celular: telefono.length > 9 ? telefono.slice(-9) : telefono,
+    costo: aNumero(valor(item, ["valorFlete", "flete", "costoEnvio"])),
+    recaudo: aNumero(valor(item, ["valorRecaudo", "recaudo"])),
+  };
+}
