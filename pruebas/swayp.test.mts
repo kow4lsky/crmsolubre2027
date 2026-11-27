@@ -38,3 +38,10 @@ test("el estado del pedido sigue a la guía sin reabrir cerrados", () => {
   assert.equal(estadoDelCrm("12", "ENTREGADO"), null);
   assert.equal(estadoDelCrm("6", "EN TRÁNSITO"), null);
 });
+
+test("lee una guía de la lista por fechas de Swayp", async () => {
+  const { leerGuiaSwayp } = await import("../src/lib/swayp.ts");
+  const g = leerGuiaSwayp({ guia: 10000022753, idEstado: 7, estado: "Entregada", id: "wed236100", telefonoDestinatario: "+51 997 556 514", valorFlete: "8.00", valorRecaudo: "89.90" });
+  assert.deepEqual(g, { guia: "10000022753", codigo: "7", estado: "Entregada", idExterno: "WED236100", celular: "997556514", costo: 8, recaudo: 89.9 });
+  assert.equal(leerGuiaSwayp({ numeroGuia: "1", estado: "Reparto" }).codigo, "5");
+});

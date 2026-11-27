@@ -4277,6 +4277,22 @@ export async function registrarPedidosEnShalom(
   }
 }
 
+/** "Actualizar Swayp": trae ya los estados de las guías de Swayp. */
+export async function actualizarSwaypAhora(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  if (!["admin", "encargado"].includes(scope.rolVenta)) return { ok: false, error: "Solo el administrador o el encargado pueden hacerlo." };
+  try {
+    const { actualizarEstadosSwayp } = await import("@/lib/swayp-server");
+    const r = await actualizarEstadosSwayp(getSupabaseAdmin(), true);
+    if (!r.ok) return { ok: false, error: `No se pudo consultar Swayp: ${r.error}` };
+    if (r.omitido === "sin conexión") return { ok: false, error: "Falta cargar el token, la URL base y el correo de Swayp en Configuración → Conexiones." };
+    return { ok: true, mensaje: `Swayp: ${r.guias} guías de los últimos 20 días, ${r.encontrados} pedidos encontrados, ${r.actualizados} actualizados.` };
+  } catch (error) {
+    return { ok: false, error: `No se pudo consultar Swayp: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
 /** "Actualizar" en Llamadas: trae ya de Flujos los leads de hoy. */
 export async function actualizarLlamadas(dia?: string): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
   const scope = await requireWorkspace();

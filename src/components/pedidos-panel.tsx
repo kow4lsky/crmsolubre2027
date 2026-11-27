@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { actualizarShalomAhora } from "@/app/actions";
+import { actualizarShalomAhora, actualizarSwaypAhora } from "@/app/actions";
 import { ImportarPedidos } from "@/components/importar-pedidos";
 import { EnvioOlva } from "@/components/envio-olva";
 import { EnvioShalom } from "@/components/envio-shalom";
@@ -132,6 +132,7 @@ export function PedidosPanel({
   const [verShalom, setVerShalom] = useState(false);
   const [verSwayp, setVerSwayp] = useState(false);
   const [actualizandoShalom, setActualizandoShalom] = useState(false);
+  const [actualizandoSwayp, setActualizandoSwayp] = useState(false);
   const [verOlva, setVerOlva] = useState(false);
 
   // La búsqueda espera a que se deje de escribir: no una consulta por tecla.
@@ -335,6 +336,24 @@ export function PedidosPanel({
           >
             <Truck className={`size-4 ${actualizandoShalom ? "animate-pulse" : ""}`} />
             <span className="hidden sm:inline">Actualizar Shalom</span>
+          </button>
+        )}
+        {puedeReporte && (
+          <button
+            type="button"
+            disabled={actualizandoSwayp}
+            onClick={async () => {
+              setActualizandoSwayp(true);
+              const r = await actualizarSwaypAhora();
+              setActualizandoSwayp(false);
+              onNotice(r.ok ? r.mensaje : r.error);
+              if (r.ok) recargar();
+            }}
+            className={`${BOTON_SECUNDARIO} h-11`}
+            title="Trae de Swayp el estado de las guías de Lima (se hace solo a las 9 a. m. y a las 4 p. m.)"
+          >
+            <Truck className={`size-4 ${actualizandoSwayp ? "animate-pulse" : ""}`} />
+            <span className="hidden sm:inline">Actualizar Swayp</span>
           </button>
         )}
         {esAdmin && (
