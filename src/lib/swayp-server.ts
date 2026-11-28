@@ -242,21 +242,41 @@ export async function actualizarEstadosSwayp(supabase: SupabaseClient, forzar = 
     if (!workspace) return { ok: false, error: "Todavía no hay workspace." };
 
     const fecha = (d: Date) => new Date(d.getTime() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    // Swayp identifica al negocio por su RUC (id) o por el correo: se prueba
+    // primero el RUC (si está cargado) y después el correo de la cuenta.
+    const ruc = (v.remitente_ruc ?? "").replace(/\D/g, "");
+    const identidades: Record<string, string>[] = [...(ruc ? [{ id: ruc }] : []), { email: v.email }];
+    let identidad = identidades[0];
     const crudas: Record<string, unknown>[] = [];
     for (let pagina = 1; pagina <= 20; pagina++) {
-      const cuerpo = {
-        email: v.email,
-        fechaIni: fecha(new Date(ahora.getTime() - DIAS_SWAYP * 24 * 60 * 60 * 1000)),
-        fechaFin: fecha(ahora),
-        pagination: { pageSize: 200, page: pagina },
-        fullData: true,
-      };
-      let respuesta = await fetch(`${base}/v2/guias/dates`, { method: "POST", headers, body: JSON.stringify(cuerpo), cache: "no-store" });
+      const pedir = (quien: Record<string, string>) =>
+        fetch(`${base}/v2/guias/dates`, {
+          method: "POST",
+          headers,
+          cache: "no-store",
+          body: JSON.stringify({
+            ...quien,
+            fechaIni: fecha(new Date(ahora.getTime() - DIAS_SWAYP * 24 * 60 * 60 * 1000)),
+            fechaFin: fecha(ahora),
+            pagination: { pageSize: 200, page: pagina },
+            fullData: true,
+          }),
+        });
+      let respuesta = await pedir(identidad);
       if (respuesta.status === 403 && pagina === 1) {
         await fetch(`${base}/v1/integrations/activate`, { method: "POST", headers });
-        respuesta = await fetch(`${base}/v2/guias/dates`, { method: "POST", headers, body: JSON.stringify(cuerpo), cache: "no-store" });
+        for (const otra of identidades) {
+          respuesta = await pedir(otra);
+          identidad = otra;
+          if (respuesta.status !== 403) break;
+        }
       }
       const texto = await respuesta.text();
+      if (respuesta.status === 403 && /no asociado/i.test(texto)) {
+        throw new Error(
+          `Swayp dice "Negocio no asociado a tu cuenta": el correo del token (${v.email}) no está vinculado a tu negocio en Swayp${ruc ? "" : " y falta el RUC en Conexiones → Swayp"}. Pídele a Swayp que lo asocie.`,
+        );
+      }
       if (!respuesta.ok) throw new Error(`Swayp respondió ${respuesta.status}: ${texto.slice(0, 200)}`);
       const json = texto ? (JSON.parse(texto) as unknown) : null;
       const items = listaDe(json);

@@ -1,6 +1,8 @@
 "use client";
 
-import { History, Lock, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { Download, History, Lock, Plus, ShieldAlert, Trash2 } from "lucide-react";
+
+import { ticketShalomDePedido } from "@/app/actions";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { BOTON_SECUNDARIO, EstadoChip } from "@/components/pedidos-ui";
@@ -791,6 +793,28 @@ function SeguimientoDeEnvio({ pedido, timezone }: { pedido: Pedido; timezone: st
     };
   }, [supabase, pedido.id]);
 
+  const esShalom = !pedido.guia_swayp && /shalom/i.test(pedido.courier ?? "");
+  const [bajando, setBajando] = useState(false);
+  const [errorTicket, setErrorTicket] = useState<string | null>(null);
+
+  /** El ticket se pide a Shalom recién ahora, al tocar el botón. */
+  const descargarTicket = async () => {
+    setBajando(true);
+    setErrorTicket(null);
+    const r = await ticketShalomDePedido(pedido.id);
+    setBajando(false);
+    if (!r.ok) return setErrorTicket(r.error);
+    const bytes = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = r.nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
   const guia = pedido.guia_swayp ?? "";
   const estadoCourier = guia ? pedido.estado_swayp : pedido.estado_shalom;
   return (
@@ -804,7 +828,18 @@ function SeguimientoDeEnvio({ pedido, timezone }: { pedido: Pedido; timezone: st
             Ver seguimiento
           </a>
         )}
+        {esShalom && (
+          <button
+            type="button"
+            disabled={bajando}
+            onClick={() => void descargarTicket()}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+          >
+            <Download className="size-3.5" /> {bajando ? "Pidiendo a Shalom…" : "Descargar ticket Shalom"}
+          </button>
+        )}
       </p>
+      {errorTicket && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 dark:bg-red-500/10 dark:text-red-200">{errorTicket}</p>}
       {eventos && eventos.length === 0 && <p className="mt-2 text-xs text-neutral-500">Todavía no llegó ningún movimiento del courier.</p>}
       {eventos && eventos.length > 0 && (
         <ol className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
