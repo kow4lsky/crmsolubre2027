@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
 
-import { ClienteShalomPro, SesionVencida, dnisNoRegistrados, historial, rastreo, registrarIndividual, registrarMasivo } from "../src/lib/shalom-pro.ts";
+import { ClienteShalomPro, SesionVencida, dnisNoRegistrados, historial, idDelEnvio, rastreo, registrarIndividual, registrarMasivo, ticketDelEnvio } from "../src/lib/shalom-pro.ts";
 import {
   cookieDeSesion,
   emparejarPorDni,
@@ -256,6 +256,37 @@ test("envío individual: agencias, paquete, tarifa, destinatario a mano y la gu�
     assert.equal(enviado?.["destinatario_uuid"], "u-1");
     assert.equal(enviado?.["clave"], "1127");
     assert.equal(enviado?.["remitente_nombre"], "CLEANCORP SOLUCIONES EIRL");
+  } finally {
+    servidor.close();
+  }
+});
+
+test("ticket de Shalom: busca el envío, pide el permiso y baja el PDF", async () => {
+  const servidor = http.createServer((req, res) => {
+    const json = (data: unknown) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, message: "ok", data }));
+    };
+    if (req.url === "/sanctum/csrf-cookie") return res.writeHead(204).end();
+    if (req.url === "/api/v1/auth/me") return json({ email: "x@y" });
+    if (req.url?.startsWith("/api/v1/service-orders/shipments/tracking"))
+      return json({ items: [{ guideNumber: "105512456", code: "TMNW", serviceOrderIdEmpresarial: 108983847, status: "en_origen" }], meta: { current_page: 1, last_page: 1 } });
+    if (req.url === "/api/v1/ticket-pdf/token" && req.method === "POST") return json({ token: "t0k" });
+    if (req.url?.startsWith("/api/v1/ticket-pdf/108983847?token=t0k")) {
+      res.writeHead(200, { "Content-Type": "application/pdf" });
+      return res.end("%PDF-1.7 prueba");
+    }
+    res.writeHead(404).end();
+  });
+  await new Promise<void>((r) => servidor.listen(0, r));
+  const base = `http://127.0.0.1:${(servidor.address() as { port: number }).port}`;
+  try {
+    const cliente = new ClienteShalomPro("enviashalom_session=x", base);
+    const id = await idDelEnvio(cliente, "105512456", "TMNW");
+    assert.equal(id, "108983847");
+    const { bytes, tipo } = await ticketDelEnvio(cliente, id as string);
+    assert.match(tipo, /pdf/);
+    assert.equal(new TextDecoder().decode(bytes).slice(0, 5), "%PDF-");
   } finally {
     servidor.close();
   }

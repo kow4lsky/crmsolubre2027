@@ -79,6 +79,21 @@ export class ClienteShalomPro {
     return yo;
   }
 
+  /** Descarga un archivo (por ejemplo el PDF del ticket) con la sesión. */
+  async descargar(ruta: string): Promise<{ bytes: Uint8Array; tipo: string }> {
+    if (!this.abierta) await this.abrir();
+    const respuesta = await fetch(`${this.base}/api/v1${ruta}`, {
+      headers: this.encabezados({ Accept: "application/pdf,*/*" }),
+      cache: "no-store",
+      redirect: "manual",
+    });
+    if (respuesta.status === 401 || (respuesta.status >= 300 && respuesta.status < 400)) {
+      throw new SesionVencida("La sesión de Shalom PRO venció. Vuelve a copiar la cookie en Configuración → Conexiones → Shalom PRO.");
+    }
+    if (!respuesta.ok) throw new Error(`Shalom PRO respondió ${respuesta.status} al descargar.`);
+    return { bytes: new Uint8Array(await respuesta.arrayBuffer()), tipo: respuesta.headers.get("content-type") ?? "application/pdf" };
+  }
+
   /** Una llamada a /api/v1. Devuelve `data` del sobre { success, message, data }. */
   async pedir(metodo: "GET" | "POST" | "PUT" | "DELETE", ruta: string, cuerpo?: FormData | Record<string, unknown>, intento = 0): Promise<unknown> {
     if (!this.abierta && ruta !== "/auth/me") await this.abrir();
@@ -538,4 +553,36 @@ export async function registrarIndividual(cliente: ClienteShalomPro, envio: Envi
   if (!guia) throw new Error(`Shalom no devolvió la guía del envío (respuesta ${formaDe(respuestaEnvio).slice(0, 200)}).`);
   const precioFinal = Number(creado?.precio);
   return { guia, codigo: String(creado?.codigo ?? ""), precio: Number.isFinite(precioFinal) ? precioFinal : precio };
+}
+
+/* --------------------------------------------------------------- ticket */
+
+/** El id interno del envío (el que pide el ticket), desde Rastreo o Envíos pendientes. */
+export async function idDelEnvio(cliente: ClienteShalomPro, orden: string, codigo: string): Promise<string | null> {
+  const coincide = (item: Record<string, unknown>) => {
+    const guia = String(item.service_order_guia_empresarial ?? item.guideNumber ?? item.order_number ?? "");
+    const cod = String(item.code_service_order_empresarial ?? item.code ?? "").toUpperCase();
+    return (orden && guia === orden) || (!!codigo && cod === codigo.toUpperCase() && (!orden || guia === orden || !guia));
+  };
+  const idDe = (item: Record<string, unknown>) =>
+    String(item.service_order_id_empresarial ?? item.serviceOrderIdEmpresarial ?? item.service_order_id ?? item.ose_id ?? "") || null;
+  // Primero buscando por N° de orden (rápido); si no, en las listas completas.
+  const filtrado = orden ? await rastreo(cliente, 1, { order_number: orden }) : [];
+  const listas = [filtrado, await pendientes(cliente).catch(() => [])];
+  for (const lista of listas) {
+    const item = lista.find(coincide);
+    if (item) return idDe(item);
+  }
+  const todo = await rastreo(cliente, 30);
+  const item = todo.find(coincide);
+  return item ? idDe(item) : null;
+}
+
+/** El PDF del ticket de un envío, como "Descargar Ticket Shalom". */
+export async function ticketDelEnvio(cliente: ClienteShalomPro, idEnvio: string): Promise<{ bytes: Uint8Array; tipo: string }> {
+  const permiso = desenvolver(await cliente.pedir("POST", "/ticket-pdf/token", { ose_id: idEnvio }));
+  const token = String(permiso?.token ?? "");
+  if (!token) throw new Error("Shalom no dio el permiso para descargar el ticket.");
+  const nombre = `Ticket_OS_${idEnvio}.pdf`;
+  return cliente.descargar(`/ticket-pdf/${encodeURIComponent(idEnvio)}?token=${encodeURIComponent(token)}&inline=0&filename=${encodeURIComponent(nombre)}`);
 }

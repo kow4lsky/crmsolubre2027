@@ -23,8 +23,10 @@ import {
   historial,
   pendientes,
   rastreo,
+  idDelEnvio,
   registrarIndividual,
   registrarMasivo,
+  ticketDelEnvio,
   type Destinatario,
 } from "@/lib/shalom-pro";
 import { ORIGEN_SHALOM } from "@/lib/agencias-shalom";
@@ -389,4 +391,23 @@ export async function registrarIndividualesEnShalom(
       mensaje: registrados.length ? "Envíos individuales registrados." : "No se registró ningún envío individual.",
     },
   };
+}
+
+/** "Descargar ticket Shalom" de un pedido: se pide recién al tocar el botón. */
+export async function ticketDePedido(tracking: string): Promise<{ ok: true; base64: string; nombre: string } | { ok: false; error: string }> {
+  const conexion = await cliente();
+  if (!conexion.ok) return conexion;
+  const orden = ordenDelTracking(tracking) ?? "";
+  const codigo = /-\s*([A-Z0-9]{3,6})\s*$/i.exec(tracking)?.[1] ?? "";
+  if (!orden && !codigo) return { ok: false, error: "El pedido no tiene un tracking de Shalom." };
+  try {
+    await conexion.cliente.abrir();
+    const id = await idDelEnvio(conexion.cliente, orden, codigo);
+    if (!id) return { ok: false, error: `No encontré el envío ${tracking} en Shalom PRO (Rastreo ni Envíos pendientes).` };
+    const { bytes, tipo } = await ticketDelEnvio(conexion.cliente, id);
+    if (!/pdf/i.test(tipo) && !(bytes[0] === 0x25 && bytes[1] === 0x50)) return { ok: false, error: "Shalom no devolvió un PDF." };
+    return { ok: true, base64: Buffer.from(bytes).toString("base64"), nombre: `Ticket_Shalom_${orden || id}.pdf` };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message.replace(/^Shalom PRO:\s*/, "") : String(error) };
+  }
 }

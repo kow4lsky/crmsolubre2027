@@ -4277,6 +4277,26 @@ export async function registrarPedidosEnShalom(
   }
 }
 
+/** "Descargar ticket Shalom" de un pedido (cualquiera que vea el pedido). */
+export async function ticketShalomDePedido(pedidoId: string): Promise<{ ok: true; base64: string; nombre: string } | { ok: false; error: string }> {
+  const scope = await requireWorkspace();
+  if (!scope.ok) return { ok: false, error: scope.error };
+  // Con la sesión de la persona: sólo un pedido que ella puede ver.
+  const { data: pedido } = await scope.supabase
+    .from("pedidos")
+    .select("tracking, courier")
+    .eq("workspace_id", scope.workspaceId)
+    .eq("id", pedidoId)
+    .maybeSingle();
+  if (!pedido?.tracking) return { ok: false, error: "Ese pedido no tiene tracking." };
+  try {
+    const { ticketDePedido } = await import("@/lib/shalom-server");
+    return await ticketDePedido(String(pedido.tracking));
+  } catch (error) {
+    return { ok: false, error: `No se pudo descargar el ticket: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
 /** "Actualizar Swayp": trae ya los estados de las guías de Swayp. */
 export async function actualizarSwaypAhora(): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
   const scope = await requireWorkspace();
